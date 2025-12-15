@@ -228,9 +228,11 @@ Optimize $\omega_k$ via gradient descent.
 
 ### 10.2 Complex-Valued Fields
 Use:
+
 $$
 e^{i \omega \|x - p\|}
 $$
+
 for phase-aware classification.
 
 ### 10.3 Time-Evolving Fields
