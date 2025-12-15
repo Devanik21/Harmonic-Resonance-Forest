@@ -185,6 +185,7 @@ For:
 - $d$ dimensions
 
 **Inference:**  
+
 $$
 \mathcal{O}(N \cdot d)
 $$
