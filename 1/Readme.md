@@ -69,6 +69,7 @@ $$
 #### Interpretation of Terms
 
 **1. Gaussian Damping Term**
+
 $$
 \exp(-\gamma \|x - p_i\|^2)
 $$
