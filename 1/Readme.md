@@ -105,10 +105,10 @@ Tested on `make_moons` dataset (300 samples, 70-30 train-test split):
 KNN:            97.78%
 Random Forest:  96.67%
 SVM:            96.67%
-HRF (ours):     86.67%
+HRF (ours):     91.11%
 ```
 
-![Decision Boundaries](https://github.com/user-attachments/assets/feeed701-a2b3-4433-a571-a24b3c23bd46)
+![Decision Boundaries](https://github.com/user-attachments/assets/40162c9d-6042-4960-a4c5-bab4e8bcf934)
 
 
 ### Analysis
