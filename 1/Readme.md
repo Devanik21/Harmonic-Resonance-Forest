@@ -108,7 +108,7 @@ SVM:            96.67%
 HRF (ours):     86.67%
 ```
 
-![Decision Boundaries](1/Results.png)
+![Decision Boundaries]([1/Results.png](https://github.com/Devanik21/ML-ReInvEnTed/blob/main/1/Results.png))
 
 ### Analysis
 
