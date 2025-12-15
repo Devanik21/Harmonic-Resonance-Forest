@@ -233,7 +233,7 @@ This is **blue-sky ML research** — prioritizing novelty and interpretability o
 
 ##  License
 
-MIT License - see [LICENSE](LICENSE) file.
+MIT License([LICENSE](https://github.com/Devanik21/ML-ReInvEnTed/tree/main?tab=MIT-1-ov-file)) file.
 
 ---
 
