@@ -185,11 +185,11 @@ The development of HRF followed rigorous scientific methodology through iterativ
 
 The model achieved near-perfect classification with minimal false positives and false negatives:
 
-[**Medical Diagnostic Precision**]
+# Medical Diagnostic Precision
 
 **Confusion matrix heatmap**
 
-# Final Version
+# Final Form(V14.0)
 
 <img width="790" height="590" alt="download" src="https://github.com/user-attachments/assets/08a99191-68f6-42ae-8222-a63a14588383" />
 
