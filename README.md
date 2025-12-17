@@ -187,7 +187,7 @@ The model achieved near-perfect classification with minimal false positives and 
 
 # Medical Diagnostic Precision
 
-**Confusion matrix heatmap**
+**Confusion matrix heatmap Comparison**
 
 # Final Form(V14.0)
 
