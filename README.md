@@ -43,6 +43,28 @@ I developed **Harmonic Resonance Fields (HRF)**, a novel physics-informed machin
 
 ---
 
+
+
+
+## 🔬 Core Innovation: Phase-Invariant Classification
+
+Traditional machine learning models struggle with **temporal jitter** (random time shifts in signals). HRF solves this through resonance-based energy detection.
+
+### The Problem: Phase Jitter Stress Test
+
+I generated synthetic EEG data with increasing phase jitter (0.0 to 3.0 standard deviations of temporal shift) to simulate real-world sensor noise and movement artifacts.
+
+**Results:**
+
+| Jitter Level | HRF Accuracy | Random Forest | Performance Gap |
+|--------------|--------------|---------------|-----------------|
+| 0.0 (Clean) | 100.00% | 100.00% | 0.00% |
+| 1.0 (Noisy) | 99.17% | 93.33% | **+5.84%** |
+| 2.0 (High) | 100.00% | 92.50% | **+7.50%** |
+| 3.0 (Extreme) | 100.00% | 83.33% | **+16.67%** |
+
+**Phase Jitter Robustness**
+
 ### Phase II: Neural Perturbation Stress Test (Jitter)
 
 **Objective**: Assess HRF's robustness to temporal jitter in synthetic EEG-like signals by transforming time-domain signals into the frequency domain using Fast Fourier Transform (FFT).
@@ -88,32 +110,9 @@ I developed **Harmonic Resonance Fields (HRF)**, a novel physics-informed machin
 
 <img width="989" height="590" alt="download" src="https://github.com/user-attachments/assets/024fe837-c788-4413-b5e2-8ac05f82fc41" />
 
-### Conclusion and Implications
 
-Across all three phases, the Harmonic Resonance Fields (HRF) model has demonstrated exceptional performance and robustness. In Phase I, it surpassed conventional and state-of-the-art baselines on a real-world EEG dataset. Phases II and III critically highlighted HRF's core strength: its inherent resistance to temporal jitter due to its physics-informed spectral transformation. This capability is paramount in real-world physiological signal analysis, where precise synchronization is often unattainable. For institutions like Google DeepMind, HRF represents a significant advancement in physics-informed machine learning, offering a powerful tool for analyzing complex, dynamic biological signals with high fidelity and robustness. Its ability to extract meaningful features invariant to temporal shifts opens new avenues for developing more reliable and interpretable AI systems for healthcare, brain-computer interfaces, and other time-series driven applications.
 
 ---
-
-
-
-## 🔬 Core Innovation: Phase-Invariant Classification
-
-Traditional machine learning models struggle with **temporal jitter** (random time shifts in signals). HRF solves this through resonance-based energy detection.
-
-### The Problem: Phase Jitter Stress Test
-
-I generated synthetic EEG data with increasing phase jitter (0.0 to 3.0 standard deviations of temporal shift) to simulate real-world sensor noise and movement artifacts.
-
-**Results:**
-
-| Jitter Level | HRF Accuracy | Random Forest | Performance Gap |
-|--------------|--------------|---------------|-----------------|
-| 0.0 (Clean) | 100.00% | 100.00% | 0.00% |
-| 1.0 (Noisy) | 99.17% | 93.33% | **+5.84%** |
-| 2.0 (High) | 100.00% | 92.50% | **+7.50%** |
-| 3.0 (Extreme) | 100.00% | 83.33% | **+16.67%** |
-
-**Phase Jitter Robustness**
 
 **Line graph showing HRF maintaining accuracy while RF degrades**
 <img width="867" height="553" alt="download" src="https://github.com/user-attachments/assets/c09bea3a-ac31-4071-b410-31ff0acd8275" />
@@ -124,6 +123,10 @@ I generated synthetic EEG data with increasing phase jitter (0.0 to 3.0 standard
 
 ---
 **Scientific Explanation:** HRF measures the *frequency energy* of signals rather than temporal feature positions, making it inherently invariant to phase shifts—a fundamental limitation of decision tree-based models.
+
+### Conclusion and Implications
+
+Across all three phases, the Harmonic Resonance Fields (HRF) model has demonstrated exceptional performance and robustness. In Phase I, it surpassed conventional and state-of-the-art baselines on a real-world EEG dataset. Phases II and III critically highlighted HRF's core strength: its inherent resistance to temporal jitter due to its physics-informed spectral transformation. This capability is paramount in real-world physiological signal analysis, where precise synchronization is often unattainable. For institutions like Google DeepMind, HRF represents a significant advancement in physics-informed machine learning, offering a powerful tool for analyzing complex, dynamic biological signals with high fidelity and robustness. Its ability to extract meaningful features invariant to temporal shifts opens new avenues for developing more reliable and interpretable AI systems for healthcare, brain-computer interfaces, and other time-series driven applications.
 
 ---
 
