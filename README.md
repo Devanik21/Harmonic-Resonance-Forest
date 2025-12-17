@@ -80,16 +80,28 @@ The development of HRF followed rigorous scientific methodology through iterativ
 
 ### Version Progression
 
-| Version | Key Innovation | Test Dataset | Accuracy | Insight |
-|---------|---------------|--------------|----------|---------|
-| v1.0 | Basic resonance concept | Make Moons | 91.11% | Proof of concept |
-| v4.0 | Sparse approximation (k-neighbors) | Make Moons | 98.89% | Beat KNN baseline |
-| v7.2 | Ensemble (Harmonic Forest) | Simulated ECG | 99.33% | Medical signal expertise |
-| v10.5 | Alpha-wave specialist tuning | Real EEG | 96.45% | Domain adaptation |
-| v12.0 | Bipolar montage (holographic) | Real EEG | 97.53% | Noise cancellation |
-| **v14.0** | **Full holography optimization** | **Real EEG** | **98.46%** | **Final form** |
+| Version | Dataset Context & Description | HRF Accuracy | Best Competitor | Competitor Accuracy | Key HRF Enhancement Illustrated |
+| :------ | :------------------------------------------- | :----------- | :-------------- | :------------------ | :---------------------------------------------- |
+| v1.0    | Moons (noise=0.2)                            | 91.11%       | KNN             | 97.78%              | Initial resonance concept, basic damping.       |
+| v2.0    | Moons (noise=0.2), sklearn API               | 95.56%       | KNN             | 97.78%              | `gamma` & `decay_type` introduced, scikit-learn API. |
+| v3.0    | Moons (noise=0.2), quantum phase             | 96.67%       | KNN             | 97.78%              | Auto-scaling & `phase` parameter for wave shifts. |
+| **v4.0**| Moons (noise=0.2), sparse approx. (`k`)      | **98.89%**   | KNN             | 97.78%              | **Sparse approximation (`n_neighbors`) pushes HRF ahead of KNN.** |
+| v5.0 Avg| DeepMind Arena (6 synthetic datasets, Avg Acc)| 92.04%       | KNN             | 92.96%              | **Auto-tuning** of `base_freq` & `gamma` for adaptability. |
+| v6.0 Avg| Real-World Arena (4 medical/chemical, Avg Acc)| 87.51%       | RF              | **90.11%**          | Wide-band auto-tuner, more robust for varied data. |
+| **v7.0/HF**| Sine Wave (Periodic, synthetic)             | **87.40%**   | RF              | 84.00%              | **Harmonic Forest ensemble proves superior** on periodic data. |
+| v7.2/HF| Simulated ECG (Medical, Hard Mode)           | 99.67%       | RF              | 99.00%              | Ensemble model designed for noisy medical signals. |
+| v7.2/HF| Phase-Chaotic Engine (Synthetic, Super Hard) | 98.33%       | **RF**          | **99.44%**          | RF edges out HRF on extremely chaotic phase data. |
+| **v7.2/HF**| Synthetic EEG (Neural Perturbation Test)  | **85.56%**   | RF              | 72.22%              | **HRF significantly outperforms trees** in detecting low-freq signals amidst jitter. |
+| **v7.2/HF**| Real EEG (OpenML 1471: Eye State)         | **94.99%**   | XGBoost         | 93.12%              | **First HRF victory on real human brainwave data.** |
+| **v10.0/HF**| Real EEG (OpenML 1471: Eye State)         | **95.99%**   | XGBoost         | 93.12%              | **Self-evolving physics (freq, gamma, k)** leads to higher accuracy. |
+| **v10.5/HF**| Real EEG (OpenML 1471: Eye State)         | **96.45%**   | RF              | 92.92%              | **Alpha-Wave Specialist evolution** hones in on brainwave frequencies. |
+| **v11.0/HF**| Real EEG (OpenML 1471: Eye State)         | **96.76%**   | RF              | 93.09%              | **Neuro-Adaptive weighting & Quantum Kernel** enhance signal detection. |
+| **v12.0/HF**| Real EEG (OpenML 1471: Eye State)         | **97.53%**   | ET              | 94.49%              | **Holographic Differential (Bipolar Montage)** sets new benchmark on EEG. |
+| **v12.5/HF**| Real EEG (OpenML 1471: Eye State)         | **97.73%**   | ET              | 94.49%              | **Refined holographic approach** with wider RobustScaler quantile range. |
+| **v13.0/HF**| Real EEG (OpenML 1471: Eye State)         | **98.36%**   | ET              | 94.49%              | **Full Holography (max_features=1.0)** capturing all differential patterns. |
+| **v14.0/HF**| Real EEG (OpenML 1471: Eye State)         | **98.46%**   | ET              | 94.49%              | **Ultimate optimization** with 60 estimators, solidifying lead. |
 
-[**Algorithm Evolution Timeline**]
+**Algorithm Evolution Timeline**
 
 **Decision boundary evolution**
 
