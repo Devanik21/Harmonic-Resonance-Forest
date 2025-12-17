@@ -84,12 +84,13 @@ I developed **Harmonic Resonance Fields (HRF)**, a novel physics-informed machin
 
 **Analysis**: Phase III provides a compelling "survival curve" illustrating HRF's superior resilience to increasing temporal jitter. While other models, particularly ensemble methods like Random Forest and XGBoost, experienced significant performance degradation (dropping below 60% accuracy at higher jitter levels), HRF v12 (Ours) maintained high accuracy, consistently staying above 90% until the highest jitter levels where it still performed above 86%. SVM and KNN showed better robustness than tree-based models, but HRF generally outperformed them in the mid-to-high jitter range. This result definitively proves the effectiveness of HRF's spectral transformation and resonance kernel in preserving classification accuracy in environments characterized by time-domain signal uncertainty.
 
-### Conclusion and Implications
 
-Across all three phases, the Harmonic Resonance Fields (HRF) model has demonstrated exceptional performance and robustness. In Phase I, it surpassed conventional and state-of-the-art baselines on a real-world EEG dataset. Phases II and III critically highlighted HRF's core strength: its inherent resistance to temporal jitter due to its physics-informed spectral transformation. This capability is paramount in real-world physiological signal analysis, where precise synchronization is often unattainable. For institutions like Google DeepMind, HRF represents a significant advancement in physics-informed machine learning, offering a powerful tool for analyzing complex, dynamic biological signals with high fidelity and robustness. Its ability to extract meaningful features invariant to temporal shifts opens new avenues for developing more reliable and interpretable AI systems for healthcare, brain-computer interfaces, and other time-series driven applications.
 
 <img width="989" height="590" alt="download" src="https://github.com/user-attachments/assets/024fe837-c788-4413-b5e2-8ac05f82fc41" />
 
+### Conclusion and Implications
+
+Across all three phases, the Harmonic Resonance Fields (HRF) model has demonstrated exceptional performance and robustness. In Phase I, it surpassed conventional and state-of-the-art baselines on a real-world EEG dataset. Phases II and III critically highlighted HRF's core strength: its inherent resistance to temporal jitter due to its physics-informed spectral transformation. This capability is paramount in real-world physiological signal analysis, where precise synchronization is often unattainable. For institutions like Google DeepMind, HRF represents a significant advancement in physics-informed machine learning, offering a powerful tool for analyzing complex, dynamic biological signals with high fidelity and robustness. Its ability to extract meaningful features invariant to temporal shifts opens new avenues for developing more reliable and interpretable AI systems for healthcare, brain-computer interfaces, and other time-series driven applications.
 ---
 
 
