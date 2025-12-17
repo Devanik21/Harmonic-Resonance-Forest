@@ -35,7 +35,9 @@ I developed **Harmonic Resonance Fields (HRF)**, a novel physics-informed machin
 
 [**Performance Visualization - Benchmark Results**]
 
-[**Space for screenshot 1: Bar chart showing HRF vs competitors**]
+<img width="989" height="589" alt="download" src="https://github.com/user-attachments/assets/e6300d73-2b32-45d6-8491-b74d0223f5b7" />
+
+<img width="790" height="590" alt="download" src="https://github.com/user-attachments/assets/99c32366-9b83-40ed-b9a7-4b48353c8042" />
 
 ---
 
