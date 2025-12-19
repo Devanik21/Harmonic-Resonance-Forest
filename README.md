@@ -320,18 +320,27 @@ Where:
 
 ---
 
-## 🎓 Research Validation: Synthetic to Real-World
+### 🎓 Research Validation: Synthetic to Real-World
 
-### Multi-Domain Testing
-
-I validated HRF across diverse datasets to prove generalization:
+I validated HRF across diverse datasets to prove generalization, culminating in the v15.0 GPU-accelerated benchmark:
 
 | Test Category | Best HRF Result | Competitor | Outcome |
-|--------------|-----------------|------------|---------|
-| Synthetic Moons | 98.89% | KNN: 97.78% | **+1.11%** |
-| Sine Wave (Periodic) | 87.40% | RF: 84.00% | **+3.40%** |
-| Synthetic EEG (Neural) | 85.56% | RF: 72.22% | **+13.34%** |
-| Real EEG (Medical) | **98.46%** | ET: 94.49% | **+3.97%** |
+|:--- |:--- |:--- |:--- |
+| Synthetic Moons | 98.89% (v4.0) | KNN: 97.78% | **+1.11%** |
+| Sine Wave (Periodic) | 87.40% (v7.0) | RF: 84.00% | **+3.40%** |
+| Synthetic EEG (Neural) | 85.56% (v7.2) | RF: 72.22% | **+13.34%** |
+| **Real EEG (Medical)** | **98.84% (v15.0)** | ET: 94.49% | **+4.35%** |
+
+
+
+---
+
+###  Why v15.0 Changes the Narrative
+* **Cross-Domain Stability:** While earlier versions focused on specific wave types, v15.0's **Evolutionary Search** allows the model to find the optimal physical laws for any signal domain in seconds.
+* **Proven Generalization:** The **98.84%** result on Real EEG is backed by 5-Fold Stratified Cross-Validation, ensuring the model's "Outcome" is robust against data variability.
+* **Gap Expansion:** The margin over industry-standard **Extra Trees (ET)** has grown from +3.97% in v14.0 to a dominant **+4.35%** in v15.0.
+
+---
 
 
 ---
