@@ -20,6 +20,21 @@ I developed **Harmonic Resonance Fields (HRF)**, a novel physics-informed machin
 
 ---
 
+
+## The Uniqueness
+
+HRF combines **five fields**:
+
+1. **Wave Physics** - Damped harmonic oscillators, resonance, interference
+2. **Signal Processing** - FFT, spectral transformation, bipolar montage
+3. **Machine Learning** - Classification theory, ensemble methods, k-NN locality
+4. **Neuroscience** - Brainwave frequencies (Alpha/Beta/Delta/Theta/Gamma), EEG physiology
+5. **Statistical Mathematics** - Fourier analysis, cross-validation, optimization theory
+
+The breakthrough is the **synthesis**: treating classification as a physical wave interference problem solved with GPU-accelerated statistical validation on neurophysiological signals.
+
+---
+
 ##  Performance Benchmark: HRF v15.0 vs Industry Standards
 
 **Dataset:** EEG Eye State Corpus (OpenML 1471)  
