@@ -247,6 +247,7 @@ To prove stability, HRF v15.0 was subjected to a **5-Fold Stratified Cross-Valid
 
 ### Confusion Matrix Analysis
 
+The v15.0 Ultimate exhibits near-perfect class separation, as evidenced by the high-density diagonal in the resonance-based confusion matrix.
 The model achieved near-perfect classification with minimal false positives and false negatives:
 
 
@@ -269,7 +270,20 @@ The model achieved near-perfect classification with minimal false positives and 
 <img width="790" height="588" alt="download" src="https://github.com/user-attachments/assets/0a96606f-1ebf-4dde-afa9-2e574d4c90cb" />
 
 
+
 ---
+
+### 🏥 Clinical Significance
+Based on the **98.84%** peak accuracy and the v15.0 confusion matrix analysis:
+
+
+* **Sensitivity (Recall): 98.07%** (High-fidelity detection of the signal-active state).
+* **Specificity: 98.91%** (Exceptional rejection of false positives/noise).
+* **False Alarm Rate: 1.09%** (Significant reduction from v14.0's 1.6%, setting a new benchmark for brain monitoring).
+* **Stability:** **±0.18% K-Fold Variance** ensures these clinical metrics remain consistent across different patient datasets.
+
+---
+
 ##  Future Horizon: HRF v16.0 [Experimental Beta]
 
 While **v15.0** remains the official stable benchmark for this project due to its superior clinical reliability, internal R&D has successfully birthed **v16.0**.
@@ -321,26 +335,7 @@ Fold 5 Accuracy: 98.3311%
    Rank 3: 98.7952%
 ============================================================
 ```
----
 
-###  Medical Validation: Clinical Precision (v15.0)
-
-The v15.0 Ultimate exhibits near-perfect class separation, as evidenced by the high-density diagonal in the resonance-based confusion matrix.
-
-**Confusion Matrix Analysis: HRF v15.0 Ultimate**
-
----
-
-### 🏥 Clinical Significance
-Based on the **98.84%** peak accuracy and the v15.0 confusion matrix analysis:
-
-
-* **Sensitivity (Recall): 98.07%** (High-fidelity detection of the signal-active state).
-* **Specificity: 98.91%** (Exceptional rejection of false positives/noise).
-* **False Alarm Rate: 1.09%** (Significant reduction from v14.0's 1.6%, setting a new benchmark for brain monitoring).
-* **Stability:** **±0.18% K-Fold Variance** ensures these clinical metrics remain consistent across different patient datasets.
-
----
 
 ---
 
@@ -426,12 +421,7 @@ I validated HRF across diverse datasets to prove generalization, culminating in 
 - **Benchmark Code:** Reproducible experiments on OpenML 1471
 - **Tutorial Notebooks:** Step-by-step implementation guides
 
-# Evaluating Test Accuracy: A Brief Comparison Using the OpenML EEG Global Dataset
 
-<img width="989" height="490" alt="download" src="https://github.com/user-attachments/assets/a1b51039-ef43-4509-a371-053df007a7d2" />
-
-
-<img width="1190" height="690" alt="download" src="https://github.com/user-attachments/assets/cd3839fa-13d4-401b-80bc-2f4ee06c4b3c" />
 
 
 ---
