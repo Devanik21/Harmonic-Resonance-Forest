@@ -74,7 +74,7 @@ $$\mathbf{X}_{\text{freq}} = |\text{FFT}(\mathbf{x}_{\text{raw}})|$$
 
 Grid search over physics-informed parameter space:
 
-$$(\omega_0^*, \gamma^*, k^*) = \arg\max_{(\omega_0, \gamma, k) \in \mathcal{G}} \text{Acc}_{\text{val}}(\omega_0, \gamma, k)$$
+$(\omega_0^{*}, \gamma^{*}, k^{*}) = \arg\max_{(\omega_0, \gamma, k) \in \mathcal{G}} \mathrm{Acc_{val}}(\omega_0, \gamma, k)$
 
 where $\mathcal{G}$ includes neurophysiologically meaningful frequencies:
 - **Delta**: 1 Hz (deep sleep)
