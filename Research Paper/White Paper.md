@@ -139,7 +139,7 @@ with $M = 100$ estimators, `max_features=1.0` (full holography).
 
 **Why Resonance Outperforms Trees**:
 
-Decision trees partition via axis-aligned cuts: "if voltage at $t = 0.5$s $> 10\mu$V, classify as eyes-closed." Phase jitter shifts signal to $t = 0.7$s, examining wrong features.
+Decision trees partition via axis-aligned cuts: "if voltage at $$t = 0.5\,\text{s} > 10\,\mu\text{V}$$ , classify as eyes-closed." Phase jitter shifts signal to $$t = 0.7\,\text{s}$$, examining wrong features.
 
 **HRF's Fourier Invariance**:
 
