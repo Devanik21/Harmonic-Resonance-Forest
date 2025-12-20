@@ -12,6 +12,20 @@ Traditional machine learning constructs decision boundaries through geometric pa
 
 ---
 
+## The Uniqueness
+
+HRF combines **five fields**:
+
+1. **Wave Physics** - Damped harmonic oscillators, resonance, interference
+2. **Signal Processing** - FFT, spectral transformation, bipolar montage
+3. **Machine Learning** - Classification theory, ensemble methods, k-NN locality
+4. **Neuroscience** - Brainwave frequencies (Alpha/Beta/Delta/Theta/Gamma), EEG physiology
+5. **Statistical Mathematics** - Fourier analysis, cross-validation, optimization theory
+
+The breakthrough is the **synthesis**: treating classification as a physical wave interference problem solved with GPU-accelerated statistical validation on neurophysiological signals.
+
+---
+
 ## Mathematical Framework
 
 ### I. Wave Potential Function
