@@ -1,4 +1,4 @@
-8# Devanik
+# Devanik
 
 **ECE 2026 | Physics-Informed AI Researcher | Creator of Harmonic Resonance Fields**
 
