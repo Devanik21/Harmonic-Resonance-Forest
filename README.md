@@ -77,21 +77,18 @@ The **Classification Report** reveals a near-identical precision/recall profile 
 
 **Conclusion:** The HRF v15.0 Ultimate exhibits zero class-bias and maintains ultra-low variance, validating it as a robust, neuro-adaptive architecture capable of high-fidelity medical signal processing.
 
----
-**System Status:** `[RESIDENT-STABLE]`
-**Compute Stack:** `CUDA 12.x / RAPIDS / HRF-Core-v15`
-**Verification Signature:** _________
-
----
-
-
-
-
 
 
 ## 🔬 Core Innovation: Phase-Invariant Classification
 
 Traditional machine learning models struggle with **temporal jitter** (random time shifts in signals). HRF solves this through resonance-based energy detection.
+
+---
+
+<img width="817" height="724" alt="download" src="https://github.com/user-attachments/assets/765779e7-4e8c-468f-b59e-9a009ed7561e" />
+
+---
+
 **Scientific Explanation:** HRF measures the *frequency energy* of signals rather than temporal feature positions. Just as a pendulum resonates regardless of when you start pushing it (as long as the frequency matches), HRF detects the "Alpha Wave" pattern regardless of phase shifts.
 
 ### The Problem: Phase Jitter Stress Test
@@ -167,10 +164,6 @@ I generated synthetic EEG data with increasing phase jitter (0.0 to 3.0 standard
 
 ---
 
-<img width="817" height="724" alt="download" src="https://github.com/user-attachments/assets/5d50c3c3-986d-4c12-93a5-ab8385014019" />
-
----
-**Scientific Explanation:** HRF measures the *frequency energy* of signals rather than temporal feature positions, making it inherently invariant to phase shifts—a fundamental limitation of decision tree-based models.
 
 ### Conclusion and Implications
 
@@ -228,7 +221,7 @@ To prove stability, HRF v15.0 was subjected to a **5-Fold Stratified Cross-Valid
 > **Clinical Reliability:** The model exhibits zero class-bias with a Precision/Recall profile of **0.99/0.98** for the 'Eye Closed' state, making it highly reliable for medical diagnostics.
 
 
-**Algorithm Evolution Timeline**
+# Algorithm Evolution Timeline
 
 **Decision boundary evolution**
 
@@ -256,9 +249,6 @@ To prove stability, HRF v15.0 was subjected to a **5-Fold Stratified Cross-Valid
 
 The model achieved near-perfect classification with minimal false positives and false negatives:
 
-# Medical Diagnostic Precision
-
-**Confusion matrix heatmap Comparison**
 
 # HRF V15.0
 
