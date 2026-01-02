@@ -21,15 +21,6 @@ Where:
 * $P$ (Power): Controls the constructive interference intensity.
 * $\gamma$ (Gamma): Defines the Gaussian decay envelope.
 
-## 🏗️ Architecture: The G.O.D. Engine
-HRF operates as a tripartite ecosystem, evolving in parallel to achieve a "Holographic" understanding of the input space:
-
-1.  **Logic Unit (ExtraTrees):** Extracts discrete, rule-based decision boundaries (The "Particle").
-2.  **Gradient Unit (XGBoost):** Minimizes residual error through optimized gradient descent.
-3.  **Soul Unit (Harmonic Resonance):** Identifies non-linear, periodic, and geometric patterns via wave-interference simulation (The "Wave").
-
-The G.O.D. Manager performs **Evolutionary Multiverse Strategies**, spawning parallel parameter sets (DNA) and selecting the most stable "Physics" for a given dataset through 1,000+ generations of internal mutation.
-
 
 
 ## 📊 Harmonic Resonance Forest Benchmark Results Summary
