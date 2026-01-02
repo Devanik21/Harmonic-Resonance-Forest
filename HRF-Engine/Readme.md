@@ -979,13 +979,7 @@ The Soul Unit is domain-specific. It is designed for **Periodic, Harmonic, and G
 
 ---
 
-## Conclusion
 
-The dimensional activation analysis confirms that the Harmonic Resonance Forest operates as intended—different mathematical structures govern different classification problems, and intelligent unit selection consistently outperforms fixed ensemble strategies. The architecture successfully implements epistemological pluralism, allowing the data itself to determine which worldview reveals ground truth.
-
-**Document Classification:** Technical Research Analysis  
-**Intended Audience:** Machine Learning Researchers, Applied Scientists  
-**Next Steps:** Recommended expansion to include deep learning unit integration for image and text domains where current architecture shows limitations.
 
 ##  Deployment & Usage
 The architecture is designed to be highly portable, supporting GPU acceleration via `Cupy` and CPU fallback for standard environments.
@@ -1012,6 +1006,15 @@ While the internal manager is named G.O.D. (General Omni-Dimensional), this is a
 
 **Architecture Designer:** Devanik, Electronics & Communication Engineering Student  
 **Development Philosophy:** "Nature has already solved classification. We simply implement her solutions in silicon."
+
+
+## Conclusion
+
+The dimensional activation analysis confirms that the Harmonic Resonance Forest operates as intended—different mathematical structures govern different classification problems, and intelligent unit selection consistently outperforms fixed ensemble strategies. The architecture successfully implements epistemological pluralism, allowing the data itself to determine which worldview reveals ground truth.
+
+**Document Classification:** Technical Research Analysis  
+**Intended Audience:** Machine Learning Researchers, Applied Scientists  
+**Next Steps:** Recommended expansion to include deep learning unit integration for image and text domains where current architecture shows limitations.
 
 # Verdict
 
