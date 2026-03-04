@@ -72,9 +72,7 @@ FFT-based features and wavelet transforms extract frequency information but requ
 
 For a query point **x** ∈ ℝ<sup>d</sup> and training point **p**<sub>i</sub> of class *c*, the resonance potential is:
 
-```
-Ψ(x, pᵢ) = exp(-γ‖x - pᵢ‖²) · cos(ωc‖x - pᵢ‖ + φ)
-```
+$$\Psi(\mathbf{x}, \mathbf{p}_i) = \exp\left(-\gamma \left\| \mathbf{x} - \mathbf{p}_i \right\|^2\right) \cdot \cos\left(\omega_c \cdot \left\| \mathbf{x} - \mathbf{p}_i \right\| + \varphi\right)$$
 
 where:
 - **γ > 0**: Damping coefficient (controls spatial locality)

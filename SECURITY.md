@@ -7,15 +7,12 @@ currently being supported with security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| 16.x    | :white_check_mark: |
+| 15.x    | :white_check_mark: |
+| < 15.x  | :x:                |
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+If you discover a security vulnerability within this project, please report it directly to the lead researcher via email: **devanik2005@gmail.com**.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+We take security seriously and will acknowledge your report within 48 hours. Please provide a detailed description of the vulnerability and any steps needed to reproduce it. We appreciate your responsible disclosure and help in keeping the Harmonic Resonance Fields framework safe for the research community.

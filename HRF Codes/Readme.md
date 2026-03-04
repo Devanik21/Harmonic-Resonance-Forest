@@ -1,7 +1,7 @@
 
 ## Harmonic Resonance Classifier: A Journey from Concept to Neuro-Adaptive AI (v1.0 - v16.0)
 
-This project chronicles the evolution of the **Harmonic Resonance Classifier (HRF)**, a novel physics-informed machine learning model, from its foundational principles (v1.0) to its most advanced, neuro-adaptive form (v14.0) and finally, The v15.0 (The Ultimate GPU & K-Fold Proof) . Inspired by the phenomena of wave interference and resonance, HRF was designed to detect subtle oscillatory patterns in data, a task where traditional, purely statistical models often fall short.
+This project chronicles the evolution of the **Harmonic Resonance Classifier (HRF)**, a novel physics-informed machine learning model, from its foundational principles (v1.0) to its most advanced, neuro-adaptive form (v14.0) and finally, v15.0 (The Ultimate GPU & K-Fold Proof). Inspired by the phenomena of wave interference and resonance, HRF was designed to detect subtle oscillatory patterns in data, a task where traditional, purely statistical models often fall short.
 
 ### Evolution and Key Innovations:
 
