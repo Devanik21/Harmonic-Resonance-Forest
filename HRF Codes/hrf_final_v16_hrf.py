@@ -91,9 +91,7 @@ class HarmonicResonanceClassifier:
 
     def _wave_potential(self, x_query, X_class, class_id):
         dists = np.linalg.norm(X_class - x_query, axis=1)
-        dists = np.linalg.norm(X_class - x_query, axis=1)
 
-        frequency = self.base_freq * (class_id + 1)
         frequency = self.base_freq * (class_id + 1)
 
         waves = (1 / (1 + dists)) * np.cos(frequency * dists)
@@ -1775,8 +1773,8 @@ try:
     from xgboost import XGBClassifier
     print("[SYSTEM] XGBoost detected. The heavy artillery is ready.")
 except ImportError:
-    print("[SYSTEM] XGBoost not found. Installing...")
-    !pip install -q xgboost
+    print("[SYSTEM] XGBoost not found. Please install it using 'pip install xgboost'.")
+    # !pip install -q xgboost
     from xgboost import XGBClassifier
 
 # --- 1. DEFINE THE INVENTION (HRF v7.2 - Professional Auto-Tune) ---
