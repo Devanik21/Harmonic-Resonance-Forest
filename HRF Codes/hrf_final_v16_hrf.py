@@ -91,9 +91,7 @@ class HarmonicResonanceClassifier:
 
     def _wave_potential(self, x_query, X_class, class_id):
         dists = np.linalg.norm(X_class - x_query, axis=1)
-        dists = np.linalg.norm(X_class - x_query, axis=1)
 
-        frequency = self.base_freq * (class_id + 1)
         frequency = self.base_freq * (class_id + 1)
 
         waves = (1 / (1 + dists)) * np.cos(frequency * dists)
@@ -1775,9 +1773,16 @@ try:
     from xgboost import XGBClassifier
     print("[SYSTEM] XGBoost detected. The heavy artillery is ready.")
 except ImportError:
-    print("[SYSTEM] XGBoost not found. Installing...")
-    !pip install -q xgboost
-    from xgboost import XGBClassifier
+    print("[SYSTEM] XGBoost not found. Falling back to RandomForest for benchmark comparison. (Note: XGBoost-specific parameters will be ignored)")
+    # Define a fallback class that ignores XGBoost-specific arguments to prevent TypeErrors
+    class XGBClassifier(RandomForestClassifier):
+        def __init__(self, **kwargs):
+            rf_params = ['n_estimators', 'criterion', 'max_depth', 'min_samples_split',
+                         'min_samples_leaf', 'min_weight_fraction_leaf', 'max_features',
+                         'max_leaf_nodes', 'min_impurity_decrease', 'bootstrap',
+                         'oob_score', 'n_jobs', 'random_state', 'verbose',
+                         'warm_start', 'class_weight', 'ccp_alpha', 'max_samples']
+            super().__init__(**{k: v for k, v in kwargs.items() if k in rf_params})
 
 # --- 1. DEFINE THE INVENTION (HRF v7.2 - Professional Auto-Tune) ---
 class HarmonicResonanceClassifier(BaseEstimator, ClassifierMixin):
