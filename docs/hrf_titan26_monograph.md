@@ -19,7 +19,7 @@ This registry formally documents the deterministic state and ongoing evolution o
 ## II. Mathematical Physics Framework
 The foundational theorem of HRF asserts that every data coordinate in a given feature space acts as a source of physical wave potential. The algorithm evaluates the state space using damped harmonic oscillators to generate class-specific resonance energy. The wave potential $\Psi$ at an observation point $x$ induced by a source $p_i$ is governed by:
 
-$$ \Psi(x, p_i) = \exp(-\gamma||x - p_i||^2) \cdot \cos(\omega_c \cdot ||x - p_i|| + \varphi) $$
+$$ \Psi(\mathbf{x}, \mathbf{p}_i) = \exp\left(-\gamma \left\| \mathbf{x} - \mathbf{p}_i \right\|^2\right) \cdot \cos\left(\omega_c \cdot \left\| \mathbf{x} - \mathbf{p}_i \right\| + \varphi\right) $$
 
 ### 2.1 Parameter Definitions
 - **Gaussian Damping** ($\exp(-\gamma r^2)$): Constrains the spatial influence of the resonance wave to local topologies, preventing infinite energy divergence and ensuring manifold stability.

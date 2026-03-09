@@ -91,9 +91,7 @@ class HarmonicResonanceClassifier:
 
     def _wave_potential(self, x_query, X_class, class_id):
         dists = np.linalg.norm(X_class - x_query, axis=1)
-        dists = np.linalg.norm(X_class - x_query, axis=1)
 
-        frequency = self.base_freq * (class_id + 1)
         frequency = self.base_freq * (class_id + 1)
 
         waves = (1 / (1 + dists)) * np.cos(frequency * dists)

@@ -359,9 +359,7 @@ Fold 5 Accuracy: 98.3311%
 
 HRF models each training point as a damped harmonic oscillator generating class-specific wave potentials:
 
-```
-Ψ(x, pᵢ) = exp(-γ||x - pᵢ||²) · cos(ωc · ||x - pᵢ|| + φ)
-```
+$$\Psi(\mathbf{x}, \mathbf{p}_i) = \exp\left(-\gamma \left\| \mathbf{x} - \mathbf{p}_i \right\|^2\right) \cdot \cos\left(\omega_c \cdot \left\| \mathbf{x} - \mathbf{p}_i \right\| + \varphi\right)$$
 
 Where:
 - **Gaussian damping** (`exp(-γr²)`) controls spatial influence
