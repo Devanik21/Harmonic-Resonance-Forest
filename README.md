@@ -54,7 +54,7 @@ The breakthrough is the **synthesis**: treating classification as a physical wav
 
 
 
-<img width="1190" height="690" alt="download" src="https://github.com/user-attachments/assets/4fe24d59-617f-4a73-bc0f-927163c4c010" />
+<img width="1190" height="690" alt="Benchmark Results: HRF v15.0 (98.84% accuracy) vs Industry Standards" src="https://github.com/user-attachments/assets/4fe24d59-617f-4a73-bc0f-927163c4c010" />
 
 ---
 
@@ -100,7 +100,7 @@ Traditional machine learning models struggle with **temporal jitter** (random ti
 
 ---
 
-<img width="817" height="724" alt="download" src="https://github.com/user-attachments/assets/765779e7-4e8c-468f-b59e-9a009ed7561e" />
+<img width="817" height="724" alt="Visualization of Physics-Informed Wave Interference Mechanism" src="https://github.com/user-attachments/assets/765779e7-4e8c-468f-b59e-9a009ed7561e" />
 
 ---
 
@@ -168,14 +168,14 @@ I generated synthetic EEG data with increasing phase jitter (0.0 to 3.0 standard
 
 
 
-<img width="989" height="590" alt="download" src="https://github.com/user-attachments/assets/024fe837-c788-4413-b5e2-8ac05f82fc41" />
+<img width="989" height="590" alt="Phase III Survival Curve: Classification Accuracy vs Increasing Temporal Chaos" src="https://github.com/user-attachments/assets/024fe837-c788-4413-b5e2-8ac05f82fc41" />
 
 
 
 ---
 
 **Line graph showing HRF maintaining accuracy while RF degrades**
-<img width="867" height="553" alt="download" src="https://github.com/user-attachments/assets/c09bea3a-ac31-4071-b410-31ff0acd8275" />
+<img width="867" height="553" alt="Performance comparison: HRF maintaining accuracy while Random Forest degrades under jitter" src="https://github.com/user-attachments/assets/c09bea3a-ac31-4071-b410-31ff0acd8275" />
 
 ---
 
@@ -267,7 +267,7 @@ The model achieved near-perfect classification with minimal false positives and 
 
 # HRF V15.0
 
-<img width="809" height="675" alt="download" src="https://github.com/user-attachments/assets/b2b9a9aa-b778-4014-86bc-82291fe54977" />
+<img width="809" height="675" alt="HRF v15.0 Final Validation Confusion Matrix on the EEG Eye State corpus" src="https://github.com/user-attachments/assets/b2b9a9aa-b778-4014-86bc-82291fe54977" />
 
 ---
 
