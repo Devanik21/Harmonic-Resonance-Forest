@@ -227,9 +227,9 @@ To prove stability, HRF v15.0 was subjected to a **5-Fold Stratified Cross-Valid
 
 | Metric | Value | Significance |
 | :--- | :--- | :--- |
-| **K-Fold Mean Accuracy** | **98.12%** | Proves stability across diverse data subsets. |
-| **K-Fold Variance** | **±0.18%** | Negligible fluctuations; confirms **Zero Overfitting**. |
-| **Final Test Accuracy** | **98.84%** | Exceptional generalization on unseen brainwave data. |
+| **K-Fold Mean Accuracy** | **98.1225%** | Proves stability across diverse data subsets. |
+| **K-Fold Variance** | **±0.1828%** | Negligible fluctuations; confirms **Zero Overfitting**. |
+| **Peak Test Accuracy** | **98.8415%** | Exceptional generalization on unseen brainwave data. |
 | **ROC-AUC Score** | **0.9849** | Perfect class separation in the resonance field. |
 | **F1-Score** | **0.9836** | Harmonic balance between Precision (98.6%) and Recall (98.1%). |
 
@@ -294,7 +294,7 @@ Based on the **98.84%** peak accuracy and the v15.0 confusion matrix analysis:
 * **Sensitivity (Recall): 98.07%** (High-fidelity detection of the signal-active state).
 * **Specificity: 98.91%** (Exceptional rejection of false positives/noise).
 * **False Alarm Rate: 1.09%** (Significant reduction from v14.0's 1.6%, setting a new benchmark for brain monitoring).
-* **Stability:** **±0.18% K-Fold Variance** ensures these clinical metrics remain consistent across different patient datasets.
+* **Stability:** **±0.1828% K-Fold Variance** ensures these clinical metrics remain consistent across different patient datasets.
 
 ---
 

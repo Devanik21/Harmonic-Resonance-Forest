@@ -1775,6 +1775,12 @@ try:
 except ImportError:
     print("[SYSTEM] XGBoost not found. Using RandomForestClassifier as fallback.")
     class XGBClassifier(RandomForestClassifier):
+        """
+        Fallback implementation for XGBClassifier when the xgboost library is unavailable.
+        Inherits from RandomForestClassifier and filters out XGBoost-specific parameters
+        (eval_metric, use_label_encoder, logging_level, tree_method, device) to ensure
+        robust script execution in varied environments.
+        """
         def __init__(self, **kwargs):
             # Filter out XGBoost-specific parameters to avoid errors in fallback
             xgb_params = ['eval_metric', 'use_label_encoder', 'logging_level', 'tree_method', 'device']
@@ -1967,6 +1973,11 @@ try:
 except ImportError:
     # Fallback class if XGB not installed
     class XGBClassifier(RandomForestClassifier):
+        """
+        Robust fallback for XGBClassifier using RandomForestClassifier.
+        This allows the script to continue benchmarking even if the xgboost library is missing,
+        by stripping XGBoost-only parameters that would otherwise cause initialization errors.
+        """
         def __init__(self, **kwargs):
             xgb_params = ['eval_metric', 'use_label_encoder', 'logging_level', 'tree_method', 'device']
             filtered_kwargs = {k: v for k, v in kwargs.items() if k not in xgb_params}
@@ -2271,6 +2282,11 @@ try:
     print("[SYSTEM] XGBoost detected.")
 except ImportError:
     class XGBClassifier(RandomForestClassifier):
+        """
+        Redundant fallback implementation to ensure environment resilience.
+        Filters XGBoost-specific keyword arguments to maintain compatibility with
+        the RandomForestClassifier base class.
+        """
         def __init__(self, **kwargs):
             xgb_params = ['eval_metric', 'use_label_encoder', 'logging_level', 'tree_method', 'device']
             filtered_kwargs = {k: v for k, v in kwargs.items() if k not in xgb_params}
@@ -2459,6 +2475,10 @@ try:
     print("[SYSTEM] XGBoost detected.")
 except ImportError:
     class XGBClassifier(RandomForestClassifier):
+        """
+        Stable fallback for environments without XGBoost.
+        Strips XGB-specific parameters to prevent TypeError during RandomForest initialization.
+        """
         def __init__(self, **kwargs):
             xgb_params = ['eval_metric', 'use_label_encoder', 'logging_level', 'tree_method', 'device']
             filtered_kwargs = {k: v for k, v in kwargs.items() if k not in xgb_params}
