@@ -66,6 +66,23 @@ from sklearn.neighbors import KNeighborsClassifier
 import warnings
 warnings.filterwarnings('ignore')
 
+# Check for XGBoost
+try:
+    from xgboost import XGBClassifier
+    print("[SYSTEM] XGBoost detected.")
+except ImportError:
+    print("[SYSTEM] XGBoost not found. Using RandomForestClassifier as fallback.")
+    class XGBClassifier(RandomForestClassifier):
+        """
+        Robust fallback for XGBClassifier using RandomForestClassifier.
+        Ensures script execution resilience in environments where the 'xgboost'
+        package is not installed by filtering out XGBoost-specific parameters.
+        """
+        def __init__(self, **kwargs):
+            xgb_params = ['eval_metric', 'use_label_encoder', 'logging_level', 'tree_method', 'device']
+            filtered_kwargs = {k: v for k, v in kwargs.items() if k not in xgb_params}
+            super().__init__(**filtered_kwargs)
+
 X, y = make_moons(n_samples=300, noise=0.2, random_state=42)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
@@ -1768,22 +1785,6 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.metrics import euclidean_distances
 
-# Check for XGBoost
-try:
-    from xgboost import XGBClassifier
-    print("[SYSTEM] XGBoost detected. The heavy artillery is ready.")
-except ImportError:
-    print("[SYSTEM] XGBoost not found. Using RandomForestClassifier as fallback.")
-    class XGBClassifier(RandomForestClassifier):
-        """
-        Robust fallback for XGBClassifier using RandomForestClassifier.
-        Ensures script execution resilience in environments where the 'xgboost'
-        package is not installed by filtering out XGBoost-specific parameters.
-        """
-        def __init__(self, **kwargs):
-            xgb_params = ['eval_metric', 'use_label_encoder', 'logging_level', 'tree_method', 'device']
-            filtered_kwargs = {k: v for k, v in kwargs.items() if k not in xgb_params}
-            super().__init__(**filtered_kwargs)
 
 # --- 1. DEFINE THE INVENTION (HRF v7.2 - Professional Auto-Tune) ---
 class HarmonicResonanceClassifier(BaseEstimator, ClassifierMixin):
@@ -1964,21 +1965,6 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.metrics import euclidean_distances
 
-# Check for XGBoost
-try:
-    from xgboost import XGBClassifier
-    print("[SYSTEM] XGBoost detected. The heavy artillery is ready.")
-except ImportError:
-    class XGBClassifier(RandomForestClassifier):
-        """
-        Robust fallback for XGBClassifier using RandomForestClassifier.
-        Ensures script execution resilience in environments where the 'xgboost'
-        package is not installed by filtering out XGBoost-specific parameters.
-        """
-        def __init__(self, **kwargs):
-            xgb_params = ['eval_metric', 'use_label_encoder', 'logging_level', 'tree_method', 'device']
-            filtered_kwargs = {k: v for k, v in kwargs.items() if k not in xgb_params}
-            super().__init__(**filtered_kwargs)
 
 # --- 1. YOUR CHOSEN INVENTION (HRF v7.2 - Professional Auto-Tune) ---
 class HarmonicResonanceClassifier(BaseEstimator, ClassifierMixin):
@@ -2273,21 +2259,6 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.metrics import euclidean_distances
 
-# Check for XGBoost
-try:
-    from xgboost import XGBClassifier
-    print("[SYSTEM] XGBoost detected.")
-except ImportError:
-    class XGBClassifier(RandomForestClassifier):
-        """
-        Robust fallback for XGBClassifier using RandomForestClassifier.
-        Ensures script execution resilience in environments where the 'xgboost'
-        package is not installed by filtering out XGBoost-specific parameters.
-        """
-        def __init__(self, **kwargs):
-            xgb_params = ['eval_metric', 'use_label_encoder', 'logging_level', 'tree_method', 'device']
-            filtered_kwargs = {k: v for k, v in kwargs.items() if k not in xgb_params}
-            super().__init__(**filtered_kwargs)
 
 # --- 1. THE INVENTION: HRF v7.2 (Professional Auto-Tune) ---
 class HarmonicResonanceClassifier(BaseEstimator, ClassifierMixin):
@@ -2466,21 +2437,6 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.metrics import euclidean_distances
 
-# Check for XGBoost
-try:
-    from xgboost import XGBClassifier
-    print("[SYSTEM] XGBoost detected.")
-except ImportError:
-    class XGBClassifier(RandomForestClassifier):
-        """
-        Robust fallback for XGBClassifier using RandomForestClassifier.
-        Ensures script execution resilience in environments where the 'xgboost'
-        package is not installed by filtering out XGBoost-specific parameters.
-        """
-        def __init__(self, **kwargs):
-            xgb_params = ['eval_metric', 'use_label_encoder', 'logging_level', 'tree_method', 'device']
-            filtered_kwargs = {k: v for k, v in kwargs.items() if k not in xgb_params}
-            super().__init__(**filtered_kwargs)
 
 # --- 1. THE INVENTION: HRF v10.0 (Self-Evolving) ---
 class HarmonicResonanceClassifier_v10(BaseEstimator, ClassifierMixin):
