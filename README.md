@@ -50,6 +50,8 @@ The breakthrough is the **synthesis**: treating classification as a physical wav
 | Random Forest | 93.09% | -5.75% |
 | XGBoost | 92.99% | -5.85% |
 
+> **Maintainer's Note:** While v16.0 achieves a slightly higher peak, v15.0 remains the recommended stable version due to its superior clinical reliability and lower K-Fold variance (±0.18%).
+
 **Performance Visualization - Benchmark Results**
 
 
