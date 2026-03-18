@@ -42,13 +42,13 @@ The breakthrough is the **synthesis**: treating classification as a physical wav
 **Domain:** Medical signal classification (brainwave analysis)  
 **Validation:** 5-Fold Stratified Cross-Validation (v15.0 only)
 
-| Model | Test Accuracy | Gap from HRF |
+| Model | Test Accuracy | Lead over Model |
 | :--- | :--- | :--- |
 | **HRF v16.0 (High Var)** | **98.9319% (Peak)** | **—** |
-| **HRF v15.0 (Stable)** | **98.8415% (Peak)** | **-0.0904%** |
-| Extra Trees | 94.4927% | -4.4392% |
-| Random Forest | 93.0908% | -5.8411% |
-| XGBoost | 92.9907% | -5.9412% |
+| **HRF v15.0 (Stable)** | **98.8415% (Peak)** | **+0.0904%** |
+| Extra Trees | 94.4927% | **+4.4392%** |
+| Random Forest | 93.0908% | **+5.8411%** |
+| XGBoost | 92.9907% | **+5.9412%** |
 
 **Performance Visualization - Benchmark Results**
 
