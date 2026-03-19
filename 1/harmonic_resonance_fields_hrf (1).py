@@ -43,9 +43,7 @@ class HarmonicResonanceClassifier:
 
     def _wave_potential(self, x_query, X_class, class_id):
         dists = np.linalg.norm(X_class - x_query, axis=1)
-        dists = np.linalg.norm(X_class - x_query, axis=1)
 
-        frequency = self.base_freq * (class_id + 1)
         frequency = self.base_freq * (class_id + 1)
 
         waves = (1 / (1 + dists)) * np.cos(frequency * dists)
@@ -1521,7 +1519,7 @@ for name, X, y in datasets:
 
     print(f"{name:<25} | {avg_hrf:.2%}        | {avg_rf:.2%}        | {p_val:.4f}     | {verdict}")
 
-"""#  Research Breakthrough: The Harmonic Resonance Forest (HRF)
+r"""#  Research Breakthrough: The Harmonic Resonance Forest (HRF)
 
 ## 1. Abstract & Core Innovation
 Conventional machine learning models (Decision Trees, KNN) operate on **Euclidean or Rectangular manifolds**—they slice data into boxes or measure straight-line distances. While effective for tabular data, these approaches lack the **inductive bias** required for oscillatory systems.

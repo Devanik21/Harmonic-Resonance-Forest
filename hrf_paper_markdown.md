@@ -87,7 +87,7 @@ The Gaussian term exp(-γr²) mimics quantum probability density decay, while th
 
 #### 3.1.2 Classification Rule
 
-For a test point **x**, compute resonance energy for each class:
+For a test point $\mathbf{x}$, compute resonance energy for each class:
 
 $$ E_c(\mathbf{x}) = \sum \Psi(\mathbf{x}, \mathbf{p}_j) \quad \text{for all } \mathbf{p}_j \in N_k(\mathbf{x}, c) $$
 
@@ -105,7 +105,7 @@ This "holographic" representation filters body movement artifacts while preservi
 
 $$ \text{coherence} = \text{Var}(\mathbf{X}) = \frac{1}{d} \sum_{i=1}^{d} (\mathbf{X}_i - \bar{\mathbf{X}})^2 $$
 
-**Final feature vector**: [**X**<sub>raw</sub>, **X**<sub>diff</sub>, coherence]
+**Final feature vector**: $[\mathbf{X}_{raw}, \mathbf{X}_{diff}, \text{coherence}]$
 
 ### 3.3 Auto-Evolution Mechanism
 
@@ -330,11 +330,9 @@ In time domain, decision trees compare feature values at specific time indices t
 
 In frequency domain (via resonance kernel), energy is computed as:
 
-```
-E ∝ Σᵢ cos(ωrᵢ + φ) ≈ spectral energy
-```
+$$ E \propto \sum_i \cos(\omega r_i + \varphi) \approx \text{spectral energy} $$
 
-A phase shift τ manifests as φ' = φ + ωτ. Since we sum over multiple oscillators with varying r<sub>i</sub>, the total energy Σcos(ωr<sub>i</sub> + φ') remains approximately constant (phase averaging). This is analogous to how Fourier magnitude |X(ω)| is shift-invariant while phase ∠X(ω) is not.
+A phase shift $\tau$ manifests as $\varphi' = \varphi + \omega \tau$. Since we sum over multiple oscillators with varying $r_i$, the total energy $\sum \cos(\omega r_i + \varphi')$ remains approximately constant (phase averaging). This is analogous to how Fourier magnitude $|X(\omega)|$ is shift-invariant while phase $\angle X(\omega)$ is not.
 
 #### 6.1.2 Why Trees Fail on Temporal Jitter
 
@@ -348,7 +346,7 @@ If a peak at t=5 shifts to t=6 due to jitter, the split becomes meaningless. Ens
 
 ### 6.2 Comparison with RBF-SVM
 
-SVM with Gaussian kernel K(**x**, **x**') = exp(-γ‖**x** - **x**'‖²) achieves phase invariance on spectral features (Table 3, 95.20%). HRF differs critically:
+SVM with Gaussian kernel $K(\mathbf{x}, \mathbf{x}') = \exp(-\gamma \|\mathbf{x} - \mathbf{x}'\|^2)$ achieves phase invariance on spectral features (Table 3, 95.20%). HRF differs critically:
 
 1. **Explicit frequency encoding**: ω<sub>c</sub> per class vs. implicit via support vectors
 2. **Direct interpretability**: Hyperparameters map to physical phenomena (Hz, damping)
@@ -392,11 +390,9 @@ This is competitive with Random Forest and significantly faster than XGBoost wit
 
 #### 6.4.2 Prediction Time
 
-For *M* test samples:
+For $M$ test samples:
 
-```
-T_pred = O(M · N · d) for distance matrix
-```
+$$ T_{pred} = \mathcal{O}(M \cdot N \cdot d) \text{ for distance matrix} $$
 
 On 2,996 test samples: ~2 seconds for 60-estimator forest. Real-time inference (<10ms per sample) is achievable with optimized implementations (Cython, parallelization).
 

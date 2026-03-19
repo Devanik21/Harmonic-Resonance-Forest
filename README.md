@@ -44,11 +44,13 @@ The breakthrough is the **synthesis**: treating classification as a physical wav
 
 | Model | Test Accuracy | Gap from HRF |
 | :--- | :--- | :--- |
-| **HRF v16.0 (High Var)** | **98.93% (Peak)** | **—** |
-| **HRF v15.0 (Stable)** | **98.84% (Peak)** | **-0.09%** |
-| Extra Trees | 94.49% | -4.35% |
-| Random Forest | 93.09% | -5.75% |
-| XGBoost | 92.99% | -5.85% |
+| **HRF v16.0 (High Var)** | **98.9319% (Peak)** | **—** |
+| **HRF v15.0 (Stable)** | **98.8415% (Peak)** | **-0.0904%** |
+| Extra Trees | 94.4927% | -4.4392% |
+| Random Forest | 93.0908% | -5.8411% |
+| XGBoost | 92.9907% | -5.9412% |
+
+> **Maintainer's Note:** While HRF v16.0 achieves a higher peak accuracy, v15.0 is recommended as the stable release for clinical research due to its superior confusion matrix stability and lower variance (±0.18%).
 
 **Performance Visualization - Benchmark Results**
 
@@ -68,14 +70,14 @@ The breakthrough is the **synthesis**: treating classification as a physical wav
 
 To move beyond simple accuracy, HRF v15.0 was subjected to a **5-Fold Stratified Cross-Validation** and a full battery of statistical tests on the OpenML 1471 (EEG Eye State) corpus.
 
-#### Core Validation Metrics
+#### Core Validation Metrics (v15.0 Stable)
 | Metric | Value | Significance |
 | :--- | :--- | :--- |
 | **K-Fold Mean Accuracy** | **98.1225%** | Proves stability across diverse data subsets. |
 | **K-Fold Variance** | **±0.1828%** | Negligible fluctuations; confirms **Zero Overfitting**. |
 | **Final Test Accuracy** | **98.5314%** | Exceptional generalization on unseen brainwave data. |
 | **ROC-AUC Score** | **0.9849** | Perfect class separation in the resonance field. |
-| **F1-Score** | **0.9836** | Harmonic balance between Precision (98.6%) and Recall (98.1%). |
+| **F1-Score** | **0.9836** | Harmonic balance between Precision (98.65%) and Recall (98.07%). |
 
 
 
