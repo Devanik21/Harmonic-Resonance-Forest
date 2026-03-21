@@ -165,7 +165,7 @@ Taking magnitudes eliminates phase factor $e^{-i\omega\tau}$, achieving mathemat
 
 ## Conclusion
 
-By modeling classification as wave interference rather than spatial partitioning, HRF achieves medical-grade accuracy (98.53%) with rigorous statistical validation (±0.18% CV variance). The physics-informed architecture inherently solves temporal jitter through spectral transformation, while GPU acceleration enables comprehensive hyperparameter optimization previously computationally infeasible. This represents a paradigm shift: **when AI listens to the physics of signals, it unlocks understanding inaccessible to purely statistical optimization**.
+By modeling classification as wave interference rather than spatial partitioning, HRF achieves medical-grade accuracy (98.53%) with rigorous statistical validation (±0.1828% CV variance). The physics-informed architecture inherently solves temporal jitter through spectral transformation, while GPU acceleration enables comprehensive hyperparameter optimization previously computationally infeasible. This represents a paradigm shift: **when AI listens to the physics of signals, it unlocks understanding inaccessible to purely statistical optimization**.
 
 **Open Source**: Full implementation available at [github.com/Devanik21/Harmonic-Resonance-Forest](https://github.com/Devanik21/Harmonic-Resonance-Forest)
 
