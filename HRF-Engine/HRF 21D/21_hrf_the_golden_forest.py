@@ -3701,7 +3701,7 @@ if __name__ == "__main__":
     # model = HarmonicResonanceForest_Ultimate()
     # model.fit(X, y)
 
-    print("✅ Titan-21 Safety Protocol Engaged. System is stable.")
+    print("✅ Titan-26 Safety Protocol Engaged. System is stable.")
 
 """# --------------------------------"""
 
@@ -4144,7 +4144,7 @@ y = LabelEncoder().fit_transform(y)
 golden_dragon = HarmonicResonanceForest_Ultimate()
 
 # --- 3. TRAIN (FIT) ---
-print("⚔️ Training the Golden Dragon (Titan-21)... please wait...")
+print("⚔️ Training the Golden Dragon (Titan-26)... please wait...")
 golden_dragon.fit(X, y)
 
 # --- 4. SAVE TO FILE (The Flash Drive Step) ---
@@ -4258,7 +4258,7 @@ print(predictions)'''
 # 🌌 The Harmonic Resonance Forest: A 26-Dimensional Classification Architecture
 
 **Inventor:** Nik (Electronics & Communication Engineering Student)  
-**Architecture Version:** Titan-21 (26D Sophisticated Dimensionality)  
+**Architecture Version:** Titan-26 (26D Sophisticated Dimensionality)
 **Philosophy:** Nature + Biology + Physics + Standard Machine Learning
 
 ---

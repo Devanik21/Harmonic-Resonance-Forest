@@ -2,3 +2,17 @@ __pycache__/
 *.py[cod]
 *$py.class
 .DS_Store
+.ipynb_checkpoints/
+*.ipynb
+!HRF Codes/HRF_Conference.ipynb
+!HRF Codes/HRF_EEG.ipynb
+!HRF Codes/HRF_Final_v16_hrf.ipynb
+!HRF-Engine/Generalized_HRF_V2.ipynb
+!HRF-Engine/Import Code.ipynb
+!HRF-Engine/HRF 21D/21_hrf_the_golden_forest.ipynb
+!HRF-Engine/HRF 21D/HRF_EEG.ipynb
+!HRF-Engine/HRF 21D/Hill_Valley_Mastery.ipynb
+!HRF-Engine/HRF 26D/21_stable_hrf.ipynb
+!1/1_HRF_ML.ipynb
+!1/1_harmonic_resonance_fields.ipynb
+!1/harmonic_resonance_fields_hrf.ipynb
