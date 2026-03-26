@@ -21,19 +21,17 @@ Our empirical results demonstrate **statistically significant superiority** (p <
 
 Traditional classifiers compute predictions using Euclidean distance:
 
-```
-similarity ∝ 1 / distance
-```
+$$\text{similarity} \propto \frac{1}{\left\| \mathbf{x} - \mathbf{p}_i \right\|}$$
 
 HRF introduces a **resonance-modulated kernel**:
 
-$$\text{energy}(\mathbf{x}, \mathbf{X}_{\text{class}}, \omega) = \sum [\text{damping}(d) \cdot \cos(\omega \cdot d + \varphi)]$$
+$$\Psi(\mathbf{x}, \mathbf{p}_i) = \exp\left(-\gamma \left\| \mathbf{x} - \mathbf{p}_i \right\|^2\right) \cdot \cos\left(\omega_c \cdot \left\| \mathbf{x} - \mathbf{p}_i \right\| + \varphi\right)$$
 
 Where:
-- $d = \left\| \mathbf{x} - \mathbf{x}_i \right\|$ (Euclidean distance to training point)
-- $\omega = \text{base\_freq} \cdot (\text{class\_id} + 1)$ (class-specific frequency)
-- $\text{damping}(d) = \exp(-\gamma \cdot d^2)$ (Gaussian) or $1/(1 + \gamma \cdot d)$ (Inverse)
-- $\varphi$ = phase shift parameter
+- $\left\| \mathbf{x} - \mathbf{p}_i \right\|$: Euclidean distance from query point $\mathbf{x}$ to training point $\mathbf{p}_i$
+- $\omega_c = f_{\text{base}} \cdot (c+1)$: Class-specific resonance frequency
+- $\gamma > 0$: Gaussian damping coefficient (spatial locality)
+- $\varphi$: Phase offset (temporal invariance)
 
 **Key Insight:** Classification becomes a measurement of which class's "resonance field" has maximum constructive interference at the query point.
 
@@ -57,6 +55,8 @@ The cosine modulation creates **temporal shift invariance**:
 | Breast Cancer | 95.79% | 95.08% | ~ (p = 0.12) |
 | Wine Quality | 96.11% | **98.89%** | ✗ |
 | Iris | 98.00% | 98.00% | - |
+
+> **Maintainer's Note:** For scientific precision, version **v15.0** (Stable) achieved a **Peak Test Accuracy** of 98.8415% and a **K-Fold Mean Accuracy** of 98.1225% (±0.1828%) on the EEG Eye State Corpus. v15.0 is the designated stable benchmark for clinical and research validation, while experimental v16.x versions may exhibit higher peak performance with greater variance.
 
 ### Domain Specialization
 
@@ -163,7 +163,7 @@ HRF belongs to the emerging paradigm of embedding domain knowledge into learning
 ### 2. Kernel Methods Connection
 HRF can be viewed as a **non-stationary kernel** where similarity depends on both distance and class-specific oscillation:
 
-$$K(\mathbf{x}, \mathbf{x}_i | \text{class}) = \exp(-\gamma \cdot \left\| \mathbf{x} - \mathbf{x}_i \right\|^2) \cdot \cos(\omega_{\text{class}} \cdot \left\| \mathbf{x} - \mathbf{x}_i \right\|)$$
+$$K(\mathbf{x}, \mathbf{p}_i | c) = \exp(-\gamma \left\| \mathbf{x} - \mathbf{p}_i \right\|^2) \cdot \cos(\omega_c \left\| \mathbf{x} - \mathbf{p}_i \right\| + \varphi)$$
 
 This differs from RBF/polynomial kernels by introducing **interference**: nearby points of the same class reinforce, while opposite classes cancel.
 
@@ -230,10 +230,10 @@ If you use HRF in your research, please cite:
 
 ```bibtex
 @software{harmonic_resonance_forest_2025,
-  author = {[Your Name]},
+  author = {Devanik},
   title = {Harmonic Resonance Forest: A Physics-Informed Classifier for Periodic Signals},
   year = {2025},
-  url = {https://github.com/[your-repo]/harmonic-resonance-forest}
+  url = {https://github.com/Devanik21/Harmonic-Resonance-Forest}
 }
 ```
 

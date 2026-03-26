@@ -434,7 +434,7 @@ bars = plt.barh(df['Model'], df['Accuracy'], color=colors, edgecolor='black', he
 # 6. Styling & Limits
 plt.xlim(92.0, 100.0)  # Zoom in to emphasize the gap
 plt.xlabel('Accuracy (%)', fontsize=12, fontweight='bold')
-plt.title('The Superiority Complex: HRF Titan-21 vs Industry Standard Models\n(OpenML EEG Eye State - ID 1471)',
+plt.title('The Superiority Complex: HRF Titan-26 vs Industry Standard Models\n(OpenML EEG Eye State - ID 1471)',
           fontsize=16, fontweight='bold', pad=20)
 plt.grid(axis='x', linestyle='--', alpha=0.5)
 

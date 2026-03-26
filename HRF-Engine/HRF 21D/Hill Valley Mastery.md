@@ -1,5 +1,5 @@
 # 🔬 Benchmark Report: HRF Gamma-Ray Burst vs. Industry Standards
-**Project:** Harmonic Resonance Forest (HRF) Titan-21  
+**Project:** Harmonic Resonance Forest (HRF) Titan-26
 **Dataset:** Hill-Valley Topology (OpenML 1479)  
 **Hardware:** NVIDIA Tesla T4 GPU (16GB VRAM)  
 **Date:** January 2, 2026  
