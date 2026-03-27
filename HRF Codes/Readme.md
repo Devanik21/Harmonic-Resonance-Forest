@@ -50,8 +50,8 @@ The following table summarizes key benchmark results, showcasing the HRF's perfo
 | **v12.5/HF**| Real EEG (OpenML 1471: Eye State)         | **97.73%**   | ET              | 94.49%              | **Refined holographic approach** with wider RobustScaler quantile range. |
 | **v13.0/HF**| Real EEG (OpenML 1471: Eye State)         | **98.36%**   | ET              | 94.49%              | **Full Holography (max_features=1.0)** capturing all differential patterns. |
 | **v14.0/HF**| Real EEG (OpenML 1471: Eye State)         | **98.46%**   | ET              | 94.49%              | **Ultimate optimization** with 60 estimators, solidifying lead. |
-| **v15.0/HF** | **Real EEG (OpenML 1471: Eye State)** | **98.8415%** | ET  | 94.49% | **GPU Acceleration + Stratified K-Fold Validation (±0.18% Variance).** |
-| **v16.0/HF(High Var)** | **Real EEG (OpenML 1471: Eye State)** | **98.93%** | ET  | 94.49% | **GPU Acceleration + Stratified 5-Fold Validation (±0.2412% Variance).** |
+| **v15.0/HF** | **Real EEG (OpenML 1471: Eye State)** | **98.8415%** | ET  | 94.4927% | **GPU Acceleration + Stratified K-Fold Validation (±0.1828% Variance).** |
+| **v16.0/HF(High Var)** | **Real EEG (OpenML 1471: Eye State)** | **98.9319%** | ET  | 94.4927% | **GPU Acceleration + Stratified 5-Fold Validation (±0.2412% Variance).** |
 ### Computational Architecture (v15.0 GPU)
 
 Unlike previous versions, v15.0 utilizes a **hybrid CUDA-Python stack**:

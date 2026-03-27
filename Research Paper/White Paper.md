@@ -30,33 +30,34 @@ The breakthrough is the **synthesis**: treating classification as a physical wav
 
 ### I. Wave Potential Function
 
-Each training point $\mathbf{x}_i \in \mathbb{R}^d$ with label $y_i \in \{1,\ldots,C\}$ generates a class-specific wave field:
+Each training point $\mathbf{p}_i \in \mathbb{R}^d$ with label $y_i \in \{1,\ldots,C\}$ generates a class-specific wave field:
 
-$$\Psi_c(\mathbf{q}, \mathbf{x}_i) = \exp\left(-\gamma \|\mathbf{q} - \mathbf{x}_i\|^2\right) \cdot \left(1 + \cos(\omega_c \|\mathbf{q} - \mathbf{x}_i\| + \varphi)\right)$$
+$$\Psi(\mathbf{x}, \mathbf{p}_i) = \exp\left(-\gamma \left\| \mathbf{x} - \mathbf{p}_i \right\|^2\right) \cdot \left(1 + \cos\left(\omega_c \cdot \left\| \mathbf{x} - \mathbf{p}_i \right\| + \varphi\right)\right)$$
 
 where:
-- $\mathbf{q}$: query point
+- $\mathbf{x}$: query point
+- $\mathbf{p}_i$: training point
 - $\gamma > 0$: spatial damping (controls locality)
 - $\omega_c = \omega_0(c+1)$: class-specific frequency
-- $\varphi$: phase offset (temporal invariance)
+- $\varphi$: phase offset (temporal alignment)
 
 **Physical Interpretation**: Gaussian envelope ensures exponential decay; cosine modulation encodes oscillatory resonance; constant offset prevents destructive interference.
 
 ### II. Resonance Energy Accumulation
 
-Total energy from class $c$ at query $\mathbf{q}$:
+Total energy from class $c$ at query $\mathbf{x}$:
 
-$$E_c(\mathbf{q}) = \sum_{i: y_i = c} \Psi_c(\mathbf{q}, \mathbf{x}_i)$$
+$$E_c(\mathbf{x}) = \sum_{i: y_i = c} \Psi(\mathbf{x}, \mathbf{p}_i)$$
 
 **Sparse Approximation** (computational efficiency):
 
-$$E_c(\mathbf{q}) = \sum_{i \in \mathcal{N}_k(\mathbf{q}, c)} \Psi_c(\mathbf{q}, \mathbf{x}_i)$$
+$$E_c(\mathbf{x}) = \sum_{i \in \mathcal{N}_k(\mathbf{x}, c)} \Psi(\mathbf{x}, \mathbf{p}_i)$$
 
-where $\mathcal{N}_k(\mathbf{q}, c)$ denotes $k$ nearest neighbors of class $c$.
+where $\mathcal{N}_k(\mathbf{x}, c)$ denotes $k$ nearest neighbors of class $c$.
 
 ### III. Classification Rule
 
-$$\hat{y}(\mathbf{q}) = \arg\max_{c \in \{1,\ldots,C\}} E_c(\mathbf{q})$$
+$$\hat{y}(\mathbf{x}) = \arg\max_{c \in \{1,\ldots,C\}} E_c(\mathbf{x})$$
 
 **Distinction from k-NN**: Neighbors contribute weighted by oscillatory phase, not mere distance; summation over class members, not global $k$-nearest.
 
@@ -130,9 +131,9 @@ with $M = 100$ estimators, `max_features=1.0` (full holography).
 
 
 **Benchmarks** (test set):
-- Extra Trees: 94.49% (Δ = +4.04%)
-- Random Forest: 93.09% (Δ = +5.44%)
-- XGBoost: 92.99% (Δ = +5.54%)
+- Extra Trees: 94.4927% (Δ = +4.0387%)
+- Random Forest: 93.0908% (Δ = +5.4406%)
+- XGBoost: 92.9907% (Δ = +5.5407%)
 
 **Phase Invariance**: Under 2.0s temporal jitter, HRF maintains 90% accuracy; Random Forest degrades to 60%.
 

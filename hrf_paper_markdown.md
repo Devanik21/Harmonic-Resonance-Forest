@@ -89,11 +89,11 @@ The Gaussian term $\exp(-\gamma r^2)$ mimics quantum probability density decay, 
 
 For a test point **x**, compute resonance energy for each class:
 
-$$ E_c(\mathbf{x}) = \sum \Psi(\mathbf{x}, \mathbf{p}_j) \quad \text{for all } \mathbf{p}_j \in N_k(\mathbf{x}, c) $$
+$$ E_c(\mathbf{x}) = \sum_{\mathbf{p}_i \in N_k(\mathbf{x}, c)} \Psi(\mathbf{x}, \mathbf{p}_i) $$
 
 where $N_k(\mathbf{x}, c)$ denotes the $k$ nearest neighbors of class $c$. Sparse approximation (limited to $k$ oscillators) provides computational efficiency and noise reduction. The predicted class is:
 
-$$ \hat{y}(\mathbf{x}) = \text{argmax } E_c(\mathbf{x}) \quad \text{over all classes } c \in \{0, 1, \dots, C-1\} $$
+$$ \hat{y}(\mathbf{x}) = \arg\max_{c \in \{0, 1, \dots, C-1\}} E_c(\mathbf{x}) $$
 
 ### 3.2 Holographic Differential (Bipolar Montage) Preprocessing
 
@@ -192,10 +192,10 @@ All experiments use scikit-learn 1.3+ with identical preprocessing (RobustScaler
 
 | Model | Peak Test Accuracy | Gap from HRF |
 |-------|---------------|--------------|
-| **HRF v15.0 (Stable)** | **98.84% (Peak)** | **—** |
-| Extra Trees | 94.49% | -4.35% |
-| Random Forest | 93.09% | -5.75% |
-| XGBoost | 92.99% | -5.85% |
+| **HRF v15.0 (Stable)** | **98.8415% (Peak)** | **—** |
+| Extra Trees | 94.4927% | -4.3488% |
+| Random Forest | 93.0908% | -5.7507% |
+| XGBoost | 92.9907% | -5.8508% |
 
 **Statistical Significance**: All differences significant at p < 0.001 (paired t-test, 5-Fold Stratified CV).
 

@@ -21,7 +21,7 @@ This table documents the rigorous scientific process behind the development of t
 | **7. Harmonic Forest** | Bagging Ensemble (30 est.) | 95.79 | 95.08 | Random Forest | **Breast Cancer** | **Robustness:** Achieved statistical parity with RF on high-stakes medical data. |
 | **8. Harmonic Forest** | Bagging Ensemble (30 est.) | 96.11 | **98.89** | Random Forest | **Wine Quality** | **Honest Limitation:** RF remains superior for chemical composition data (non-periodic). |
 | **9. Harmonic Forest** | Bagging Ensemble (30 est.) | **87.40** | 84.00 | Random Forest | **Sine Wave (Periodic)** | **The Breakthrough:** HRF statistically outperformed RF on data governed by wave equations ($p < 0.01$). |
-| **10. Final Boss** | **Phase-Invariant Kernel** | **99.67** | 99.0 | Random Forest | **Hard Mode ECG** | **🏆 VICTORY:** HRF proved robust to "Phase Jitter" (Time Shifts) where Random Forest failed. |
+| **10. Final Boss** | **Phase-Invariant Kernel** | **99.6667** | 99.0000 | Random Forest | **Hard Mode ECG** | **🏆 VICTORY:** HRF proved robust to "Phase Jitter" (Time Shifts) where Random Forest failed. |
 
 ---
 

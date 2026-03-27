@@ -566,11 +566,11 @@ If you use HRF-26D in your research, please cite:
 
 ```bibtex
 @software{devanik2026hrf,
-  author = {Devanik Agarwal},
+  author = {Devanik},
   title = {Harmonic Resonance Forest: A 26-Dimensional Ensemble Learning Architecture},
   year = {2026},
   publisher = {GitHub},
-  url = {https://github.com/Devanik21/harmonic-resonance-forest},
+  url = {https://github.com/Devanik21/Harmonic-Resonance-Forest},
   note = {B.Tech Final Year Project, ECE Department, NIT Agartala}
 }
 ```

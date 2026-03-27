@@ -72,7 +72,7 @@ The 26 dimensions of unified intelligence are classified into five major sectors
 The system maintains unparalleled superiority over industry-standard gradient boosting and ensemble methods on real-world physiological signals, validated primarily on the EEG Eye State Corpus (OpenML ID: 1471).
 
 ### 4.1 Benchmark Metrics (v15.0 Ultimate)
-- **Peak Accuracy:** 98.84% (surpassing Extra Trees at 94.49%)
+- **Peak Accuracy:** 98.8415% (surpassing Extra Trees at 94.4927%)
 - **K-Fold Mean Accuracy:** 98.1225% (5-Fold Stratified Cross-Validation)
 - **K-Fold Variance:** $\pm 0.1828\%$ (Absolute confirmation of zero overfitting)
 - **Final Test Accuracy:** 98.5314% (Exceptional generalization on hold-out distributions)

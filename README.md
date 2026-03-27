@@ -44,11 +44,11 @@ The breakthrough is the **synthesis**: treating classification as a physical wav
 
 | Model | Test Accuracy | Gap from HRF |
 | :--- | :--- | :--- |
-| **HRF v16.0 (High Var)** | **98.93% (Peak)** | **—** |
-| **HRF v15.0 (Stable)** | **98.84% (Peak)** | **-0.09%** |
-| Extra Trees | 94.49% | -4.35% |
-| Random Forest | 93.09% | -5.75% |
-| XGBoost | 92.99% | -5.85% |
+| **HRF v16.0 (High Var)** | **98.9319% (Peak)** | **—** |
+| **HRF v15.0 (Stable)** | **98.8415% (Peak)** | **-0.0904%** |
+| Extra Trees | 94.4927% | -4.4392% |
+| Random Forest | 93.0908% | -5.8411% |
+| XGBoost | 92.9907% | -5.9412% |
 
 **Performance Visualization - Benchmark Results**
 
@@ -227,11 +227,11 @@ To prove stability, HRF v15.0 was subjected to a **5-Fold Stratified Cross-Valid
 
 | Metric | Value | Significance |
 | :--- | :--- | :--- |
-| **K-Fold Mean Accuracy** | **98.12%** | Proves stability across diverse data subsets. |
-| **K-Fold Variance** | **±0.18%** | Negligible fluctuations; confirms **Zero Overfitting**. |
-| **Peak Test Accuracy** | **98.84%** | Exceptional generalization on unseen brainwave data. |
+| **K-Fold Mean Accuracy** | **98.1225%** | Proves stability across diverse data subsets. |
+| **K-Fold Variance** | **±0.1828%** | Negligible fluctuations; confirms **Zero Overfitting**. |
+| **Peak Test Accuracy** | **98.8415%** | Exceptional generalization on unseen brainwave data. |
 | **ROC-AUC Score** | **0.9849** | Perfect class separation in the resonance field. |
-| **F1-Score** | **0.9836** | Harmonic balance between Precision (98.6%) and Recall (98.1%). |
+| **F1-Score** | **0.9836** | Harmonic balance between Precision (98.65%) and Recall (98.07%). |
 
 > **Clinical Reliability:** The model exhibits zero class-bias with a Precision/Recall profile of **0.99/0.98** for the 'Eye Closed' state, making it highly reliable for medical diagnostics.
 
@@ -363,8 +363,8 @@ $$\Psi(\mathbf{x}, \mathbf{p}_i) = \exp\left(-\gamma \left\| \mathbf{x} - \mathb
 
 Where:
 - **Gaussian damping** (`exp(-γr²)`) controls spatial influence
-- **Harmonic resonance** (`cos(ωr + φ)`) encodes class frequency
-- Classification chooses the class with maximum resonance energy
+- **Harmonic resonance** ($\cos(\omega_c r + \varphi)$) encodes class frequency
+- Classification rule: $\hat{y}(\mathbf{x}) = \arg\max_{c} E_c(\mathbf{x})$, choosing the class with maximum resonance energy.
 
 ### Key Components
 

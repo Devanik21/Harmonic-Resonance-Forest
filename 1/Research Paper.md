@@ -27,13 +27,14 @@ similarity ∝ 1 / distance
 
 HRF introduces a **resonance-modulated kernel**:
 
-$$\text{energy}(\mathbf{x}, \mathbf{X}_{\text{class}}, \omega) = \sum [\text{damping}(d) \cdot \cos(\omega \cdot d + \varphi)]$$
+$$\Psi(\mathbf{x}, \mathbf{p}_i) = \exp\left(-\gamma \left\| \mathbf{x} - \mathbf{p}_i \right\|^2\right) \cdot \cos\left(\omega_c \cdot \left\| \mathbf{x} - \mathbf{p}_i \right\| + \varphi\right)$$
 
-Where:
-- $d = \left\| \mathbf{x} - \mathbf{x}_i \right\|$ (Euclidean distance to training point)
-- $\omega = \text{base\_freq} \cdot (\text{class\_id} + 1)$ (class-specific frequency)
-- $\text{damping}(d) = \exp(-\gamma \cdot d^2)$ (Gaussian) or $1/(1 + \gamma \cdot d)$ (Inverse)
-- $\varphi$ = phase shift parameter
+where:
+- $\mathbf{x}$: query point
+- $\mathbf{p}_i$: training point
+- $\gamma > 0$: damping coefficient (controls spatial influence)
+- $\omega_c = \omega_0(c+1)$: class-specific frequency
+- $\varphi$: phase offset (temporal alignment)
 
 **Key Insight:** Classification becomes a measurement of which class's "resonance field" has maximum constructive interference at the query point.
 
@@ -163,7 +164,7 @@ HRF belongs to the emerging paradigm of embedding domain knowledge into learning
 ### 2. Kernel Methods Connection
 HRF can be viewed as a **non-stationary kernel** where similarity depends on both distance and class-specific oscillation:
 
-$$K(\mathbf{x}, \mathbf{x}_i | \text{class}) = \exp(-\gamma \cdot \left\| \mathbf{x} - \mathbf{x}_i \right\|^2) \cdot \cos(\omega_{\text{class}} \cdot \left\| \mathbf{x} - \mathbf{x}_i \right\|)$$
+$$K(\mathbf{x}, \mathbf{p}_i | c) = \exp\left(-\gamma \left\| \mathbf{x} - \mathbf{p}_i \right\|^2\right) \cdot \cos\left(\omega_c \cdot \left\| \mathbf{x} - \mathbf{p}_i \right\| + \varphi\right)$$
 
 This differs from RBF/polynomial kernels by introducing **interference**: nearby points of the same class reinforce, while opposite classes cancel.
 
@@ -230,10 +231,10 @@ If you use HRF in your research, please cite:
 
 ```bibtex
 @software{harmonic_resonance_forest_2025,
-  author = {[Your Name]},
+  author = {Devanik},
   title = {Harmonic Resonance Forest: A Physics-Informed Classifier for Periodic Signals},
   year = {2025},
-  url = {https://github.com/[your-repo]/harmonic-resonance-forest}
+  url = {https://github.com/Devanik21/Harmonic-Resonance-Forest}
 }
 ```
 
