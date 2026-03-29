@@ -23,12 +23,12 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.datasets import fetch_openml
 
 # --- 0. GPU INSTALLATION & SETUP ---
-def install_rapids():
-    print(" [SYSTEM] Installing NVIDIA RAPIDS (cuML) for T4 Acceleration...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install",
-                           "cudf-cu12", "cuml-cu12",
-                           "--extra-index-url=https://pypi.nvidia.com"])
-    print(" [SYSTEM] Installation Complete.")
+# def install_rapids():
+#     print(" [SYSTEM] Installing NVIDIA RAPIDS (cuML) for T4 Acceleration...")
+#     subprocess.check_call([sys.executable, "-m", "pip", "install",
+#                            "cudf-cu12", "cuml-cu12",
+#                            "--extra-index-url=https://pypi.nvidia.com"])
+#     print(" [SYSTEM] Installation Complete.")
 
 try:
     import cupy as cp
@@ -37,7 +37,7 @@ try:
     from cuml.preprocessing import RobustScaler as cuRobustScaler
     print("✅ GPU DETECTED: NVIDIA RAPIDS & CuPy Active")
 except ImportError:
-    install_rapids()
+    # install_rapids()
     import cupy as cp
     import cuml
     from cuml.neighbors import NearestNeighbors as cuNN
@@ -434,7 +434,7 @@ bars = plt.barh(df['Model'], df['Accuracy'], color=colors, edgecolor='black', he
 # 6. Styling & Limits
 plt.xlim(92.0, 100.0)  # Zoom in to emphasize the gap
 plt.xlabel('Accuracy (%)', fontsize=12, fontweight='bold')
-plt.title('The Superiority Complex: HRF Titan-21 vs Industry Standard Models\n(OpenML EEG Eye State - ID 1471)',
+plt.title('The Superiority Complex: HRF Titan-26 vs Industry Standard Models\n(OpenML EEG Eye State - ID 1471)',
           fontsize=16, fontweight='bold', pad=20)
 plt.grid(axis='x', linestyle='--', alpha=0.5)
 

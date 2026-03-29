@@ -8,8 +8,8 @@
 
 > **"Different data patterns require different laws of physics to solve optimally."**
 
-**Inventor:** Nik | Electronics & Communication Engineering Student  
-**Architecture:** Titan-21 (26D Sophisticated Dimensionality)  
+**Inventor:** Devanik | Electronics & Communication Engineering Student
+**Architecture:** Titan-26 (26D Sophisticated Dimensionality)
 **Philosophy:** Nature + Biology + Physics + Standard Machine Learning
 
 ---
@@ -157,7 +157,7 @@ The following visualization demonstrates the evolution from traditional ML to ha
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    HARMONIC RESONANCE FOREST                    │
-│                        (Titan-21 Config)                        │
+│                        (Titan-26 Config)                        │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                     ┌───────────▼───────────┐
@@ -327,7 +327,7 @@ GPU-accelerated parallel ensembles representing the **four fundamental forces**:
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/harmonic-resonance-forest.git
+git clone https://github.com/Devanik21/Harmonic-Resonance-Forest.git
 cd harmonic-resonance-forest
 
 # Install dependencies
@@ -537,22 +537,22 @@ If you use HRF in your research, please cite:
 
 ```bibtex
 @software{harmonic_resonance_forest_2026,
-  author = {Nik},
+  author = {Devanik},
   title = {Harmonic Resonance Forest: A 26-Dimensional Classification Architecture},
   year = {2026},
   publisher = {GitHub},
   journal = {GitHub repository},
-  howpublished = {\url{https://github.com/yourusername/harmonic-resonance-forest}},
-  note = {Titan-21 Configuration - 26D Sophisticated Dimensionality}
+  howpublished = {\url{https://github.com/Devanik21/Harmonic-Resonance-Forest}},
+  note = {Titan-26 Configuration - 26D Sophisticated Dimensionality}
 }
 
 @software{soul_showcase_arena_2026,
-  author = {Nik},
+  author = {Devanik},
   title = {The Soul Showcase Arena: 55-Configuration Harmonic Census},
   year = {2026},
   publisher = {GitHub},
   journal = {GitHub repository},
-  howpublished = {\url{https://github.com/yourusername/hrf-soul-showcase}},
+  howpublished = {\url{https://github.com/Devanik21/hrf-soul-showcase}},
   note = {HRF v15.0 Ultimate - GPU Edition with Titan Chorus}
 }
 ```
@@ -617,10 +617,10 @@ MIT License - see `LICENSE` file for details.
 
 ## 📞 Contact & Support
 
-**Creator:** Nik (ECE Student)  
-**Email:** [your.email@domain.com]  
-**Issues:** [GitHub Issues](https://github.com/yourusername/harmonic-resonance-forest/issues)  
-**Discussions:** [GitHub Discussions](https://github.com/yourusername/harmonic-resonance-forest/discussions)
+**Creator:** Devanik (ECE Student)
+**Email:** devanik2005@gmail.com
+**Issues:** [GitHub Issues](https://github.com/Devanik21/Harmonic-Resonance-Forest/issues)
+**Discussions:** [GitHub Discussions](https://github.com/Devanik21/Harmonic-Resonance-Forest/discussions)
 
 ---
 
@@ -657,7 +657,7 @@ Special thanks to:
 
 ### 🌌 "Nature has already solved classification. We simply implement her solutions in silicon." 🌌
 
-**Made with 🧠 and ⚡ by Nik**
+**Made with 🧠 and ⚡ by Devanik**
 
 [⬆ Back to Top](#-the-harmonic-resonance-forest-a-26-dimensional-classification-architecture)
 

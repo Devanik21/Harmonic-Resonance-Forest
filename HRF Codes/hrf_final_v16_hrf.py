@@ -4504,18 +4504,18 @@ This cell introduces HRF v15.0, the 'GPU Edition'. This version significantly en
 import subprocess
 import sys
 
-def install_rapids():
-    print("Installing NVIDIA RAPIDS (cuML & cuDF) for GPU Acceleration...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install",
-                           "cudf-cu12", "cuml-cu12",
-                           "--extra-index-url=https://pypi.nvidia.com"])
-    print("Installation Complete. Importing libraries...")
+# def install_rapids():
+#     print("Installing NVIDIA RAPIDS (cuML & cuDF) for GPU Acceleration...")
+#     subprocess.check_call([sys.executable, "-m", "pip", "install",
+#                            "cudf-cu12", "cuml-cu12",
+#                            "--extra-index-url=https://pypi.nvidia.com"])
+#     print("Installation Complete. Importing libraries...")
 
 try:
     import cuml
     import cupy as cp
 except ImportError:
-    install_rapids()
+    # install_rapids()
     import cuml
     import cupy as cp
 
@@ -4816,19 +4816,19 @@ print("\n[Self-Correction Log]: Model confirms zero class-bias detected.")
 import subprocess
 import sys
 
-def install_rapids():
-    """Ensures NVIDIA RAPIDS is available for GPU acceleration."""
-    print("Installing NVIDIA RAPIDS (cuML & cuDF) for GPU Acceleration...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install",
-                           "cudf-cu12", "cuml-cu12",
-                           "--extra-index-url=https://pypi.nvidia.com"])
-    print("Installation Complete. Importing libraries...")
+# def install_rapids():
+#     """Ensures NVIDIA RAPIDS is available for GPU acceleration."""
+#     print("Installing NVIDIA RAPIDS (cuML & cuDF) for GPU Acceleration...")
+#     subprocess.check_call([sys.executable, "-m", "pip", "install",
+#                            "cudf-cu12", "cuml-cu12",
+#                            "--extra-index-url=https://pypi.nvidia.com"])
+#     print("Installation Complete. Importing libraries...")
 
 try:
     import cuml
     import cupy as cp
 except ImportError:
-    install_rapids()
+    # install_rapids()
     import cuml
     import cupy as cp
 

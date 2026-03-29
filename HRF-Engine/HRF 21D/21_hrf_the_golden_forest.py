@@ -27,12 +27,12 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.datasets import fetch_openml
 
 # --- 0. GPU INSTALLATION & SETUP ---
-def install_rapids():
-    print(" [SYSTEM] Installing NVIDIA RAPIDS (cuML) for T4 Acceleration...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install",
-                           "cudf-cu12", "cuml-cu12",
-                           "--extra-index-url=https://pypi.nvidia.com"])
-    print(" [SYSTEM] Installation Complete.")
+# def install_rapids():
+#     print(" [SYSTEM] Installing NVIDIA RAPIDS (cuML) for T4 Acceleration...")
+#     subprocess.check_call([sys.executable, "-m", "pip", "install",
+#                            "cudf-cu12", "cuml-cu12",
+#                            "--extra-index-url=https://pypi.nvidia.com"])
+#     print(" [SYSTEM] Installation Complete.")
 
 try:
     import cupy as cp
@@ -41,7 +41,7 @@ try:
     from cuml.preprocessing import RobustScaler as cuRobustScaler
     print("✅ GPU DETECTED: NVIDIA RAPIDS & CuPy Active")
 except ImportError:
-    install_rapids()
+    # install_rapids()
     import cupy as cp
     import cuml
     from cuml.neighbors import NearestNeighbors as cuNN
@@ -367,18 +367,18 @@ if __name__ == "__main__":
 import subprocess
 import sys
 
-def install_rapids():
-    print("Installing NVIDIA RAPIDS (cuML & cuDF) for GPU Acceleration...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install",
-                           "cudf-cu12", "cuml-cu12",
-                           "--extra-index-url=https://pypi.nvidia.com"])
-    print("Installation Complete. Importing libraries...")
+# def install_rapids():
+#     print("Installing NVIDIA RAPIDS (cuML & cuDF) for GPU Acceleration...")
+#     subprocess.check_call([sys.executable, "-m", "pip", "install",
+#                            "cudf-cu12", "cuml-cu12",
+#                            "--extra-index-url=https://pypi.nvidia.com"])
+#     print("Installation Complete. Importing libraries...")
 
 try:
     import cuml
     import cupy as cp
 except ImportError:
-    install_rapids()
+    # install_rapids()
     import cuml
     import cupy as cp
 
@@ -3701,7 +3701,7 @@ if __name__ == "__main__":
     # model = HarmonicResonanceForest_Ultimate()
     # model.fit(X, y)
 
-    print("✅ Titan-21 Safety Protocol Engaged. System is stable.")
+    print("✅ Titan-26 Safety Protocol Engaged. System is stable.")
 
 """# --------------------------------"""
 
@@ -4144,7 +4144,7 @@ y = LabelEncoder().fit_transform(y)
 golden_dragon = HarmonicResonanceForest_Ultimate()
 
 # --- 3. TRAIN (FIT) ---
-print("⚔️ Training the Golden Dragon (Titan-21)... please wait...")
+print("⚔️ Training the Golden Dragon (Titan-26)... please wait...")
 golden_dragon.fit(X, y)
 
 # --- 4. SAVE TO FILE (The Flash Drive Step) ---
@@ -4258,7 +4258,7 @@ print(predictions)'''
 # 🌌 The Harmonic Resonance Forest: A 26-Dimensional Classification Architecture
 
 **Inventor:** Nik (Electronics & Communication Engineering Student)  
-**Architecture Version:** Titan-21 (26D Sophisticated Dimensionality)  
+**Architecture Version:** Titan-26 (26D Sophisticated Dimensionality)
 **Philosophy:** Nature + Biology + Physics + Standard Machine Learning
 
 ---

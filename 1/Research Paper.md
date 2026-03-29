@@ -27,13 +27,13 @@ similarity ∝ 1 / distance
 
 HRF introduces a **resonance-modulated kernel**:
 
-$$\text{energy}(\mathbf{x}, \mathbf{X}_{\text{class}}, \omega) = \sum [\text{damping}(d) \cdot \cos(\omega \cdot d + \varphi)]$$
+$$ E(\mathbf{x}, \mathbf{X}_c, \omega_c) = \sum_{\mathbf{p}_i \in \mathbf{X}_c} \left[ \text{damping}(\|\mathbf{x} - \mathbf{p}_i\|) \cdot \cos(\omega_c \cdot \|\mathbf{x} - \mathbf{p}_i\| + \varphi) \right] $$
 
 Where:
-- $d = \left\| \mathbf{x} - \mathbf{x}_i \right\|$ (Euclidean distance to training point)
-- $\omega = \text{base\_freq} \cdot (\text{class\_id} + 1)$ (class-specific frequency)
-- $\text{damping}(d) = \exp(-\gamma \cdot d^2)$ (Gaussian) or $1/(1 + \gamma \cdot d)$ (Inverse)
-- $\varphi$ = phase shift parameter
+- $\|\mathbf{x} - \mathbf{p}_i\|$: Euclidean distance from query point $\mathbf{x}$ to training point $\mathbf{p}_i$
+- $\omega_c = f_{\text{base}} \cdot (c+1)$: Class-specific angular frequency
+- $\text{damping}(r) = \exp(-\gamma r^2)$ (Gaussian) or $1/(1 + \gamma r)$ (Inverse)
+- $\varphi$: Phase shift parameter
 
 **Key Insight:** Classification becomes a measurement of which class's "resonance field" has maximum constructive interference at the query point.
 
@@ -163,7 +163,7 @@ HRF belongs to the emerging paradigm of embedding domain knowledge into learning
 ### 2. Kernel Methods Connection
 HRF can be viewed as a **non-stationary kernel** where similarity depends on both distance and class-specific oscillation:
 
-$$K(\mathbf{x}, \mathbf{x}_i | \text{class}) = \exp(-\gamma \cdot \left\| \mathbf{x} - \mathbf{x}_i \right\|^2) \cdot \cos(\omega_{\text{class}} \cdot \left\| \mathbf{x} - \mathbf{x}_i \right\|)$$
+$$ K(\mathbf{x}, \mathbf{p}_i | c) = \exp(-\gamma \|\mathbf{x} - \mathbf{p}_i\|^2) \cdot \cos(\omega_c \|\mathbf{x} - \mathbf{p}_i\|) $$
 
 This differs from RBF/polynomial kernels by introducing **interference**: nearby points of the same class reinforce, while opposite classes cancel.
 
@@ -230,10 +230,10 @@ If you use HRF in your research, please cite:
 
 ```bibtex
 @software{harmonic_resonance_forest_2025,
-  author = {[Your Name]},
+  author = {Devanik},
   title = {Harmonic Resonance Forest: A Physics-Informed Classifier for Periodic Signals},
   year = {2025},
-  url = {https://github.com/[your-repo]/harmonic-resonance-forest}
+  url = {https://github.com/Devanik21/Harmonic-Resonance-Forest}
 }
 ```
 
@@ -256,4 +256,4 @@ This work draws inspiration from:
 
 ---
 
-**Contact:** [devanik2005@gmail.com] | **Demo:** [https://colab.research.google.com/drive/1IWm4oFfwTa87xPyfQvpCHEo8WdBbrI_R#scrollTo=89061ba3]
+**Contact:** devanik2005@gmail.com | **Demo:** [https://colab.research.google.com/drive/1IWm4oFfwTa87xPyfQvpCHEo8WdBbrI_R#scrollTo=89061ba3]
