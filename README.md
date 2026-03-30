@@ -8,6 +8,17 @@
 [![Email](https://img.shields.io/badge/Email-devanik2005@gmail.com-red?style=flat&logo=gmail)](mailto:devanik2005@gmail.com)
 
 ---
+
+## GSSoC 2026 Contributions
+
+We are participating in **GSSoC 2026**!
+
+- All contributions for GSSoC 2026 should target the **`gssoc-2026`** branch.
+- Please create your Pull Request targeting **`gssoc-2026`**.
+- The `main` branch is protected and will only receive stable, reviewed changes after the program.
+
+---
+
 ⚠️ Project Status: This repository contains published research (DOI: 10.5281/zenodo.18173940). All contributions must pass rigorous testing to ensure the 98.84% accuracy benchmark is maintained. Please read CONTRIBUTING.md before opening an issue.
 
 ---
