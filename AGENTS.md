@@ -2,24 +2,75 @@
 
 Greetings, fellow researcher or automated agent. This repository documents the Harmonic Resonance Forest (HRF), a physics-informed machine learning framework. To maintain the scientific integrity and technical excellence of this project, please adhere to the following guidelines.
 
-## Core Terminology & Concepts
+# AGENTS.md
 
-Preserve the evocative and precise terminology used by the author:
+## Repository Purpose
 
-- **G.O.D. Optimizer:** General Omni Dimensional Optimizer. The high-level orchestrator of the HRF Titan-26 architecture.
-- **Holographic Differential:** A preprocessing technique (Bipolar Montage) that treats signal differences as a unified holographic manifold to cancel common-mode noise.
-- **Harmonic Resonance:** The core classification mechanism where data points generate wave potentials that interfere constructively or destructively.
-- **Titan-26:** The 26-dimensional unified manifold architecture integrating classical, topological, and wave-based models.
+Harmonic-Resonance-Forest is a research-oriented EEG and resonance analysis framework with experimental AI-assisted maintenance workflows.
 
-## Validated Performance Benchmarks (Stable v15.0)
+---
 
-Maintain these as the primary reference for the stable release:
+## Contributor Policy
 
-- **K-Fold Mean Accuracy:** 98.1225% (5-Fold Stratified CV on OpenML 1471).
-- **K-Fold Variance:** ±0.1828%.
-- **Peak Test Accuracy:** 98.8415%.
-- **Final Test Accuracy:** 98.5314%.
-- **Clinical Metrics:** Sensitivity 98.07%, Specificity 98.91%, False Alarm Rate 1.09%.
+For community programs such as GSSoC:
+
+* Human contributors must implement and submit their own pull requests.
+* AI agents may assist with suggestions, review, documentation drafting, benchmarking ideas, or planning.
+* Autonomous AI-generated pull requests for contributor-assigned issues should be avoided.
+
+---
+
+## Jules Behavior Rules
+
+When working on GSSoC-related issues:
+
+* Do not automatically create pull requests.
+* Prefer generating implementation plans, review comments, architecture suggestions, or draft documentation only.
+* Wait for explicit maintainer instruction before opening a PR.
+
+---
+
+## Labels
+
+* `gssoc-2026` → Human contributor priority
+* `jules` → AI collaboration allowed
+* `internal-automation` → Jules autonomous execution allowed (very rare and only if explicit only)
+
+---
+
+## Documentation Standards
+
+* Preserve scientific terminology and research accuracy.
+* Avoid oversimplifying resonance or EEG processing concepts.
+* Maintain repository aesthetic and technical tone.
+
+---
+
+## Workflow Preference
+
+Preferred workflow:
+
+Issue → Discussion → Human PR → AI Review Assistance → Maintainer Review
+
+Avoid:
+
+Issue → Autonomous AI PR without contributor involvement
+
+---
+
+## Additional Notes
+
+AI agents may still:
+
+* review code
+* suggest refactors
+* generate diagrams
+* improve architecture notes
+* propose benchmarks
+* assist maintainers internally
+
+without directly replacing contributor participation.
+
 
 ## Maintenance Principles
 
