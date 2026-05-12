@@ -31,6 +31,7 @@ from sklearn.metrics import log_loss, accuracy_score
 from scipy.optimize import minimize
 from scipy.fft import fft
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from concurrent.futures import ThreadPoolExecutor
 
 # GPU CHECK
 try:
@@ -337,6 +338,20 @@ from sklearn.utils.validation import check_X_y
 from sklearn.model_selection import train_test_split
 from scipy.optimize import minimize
 
+def _get_unit_prediction(unit, X, n_classes):
+    """Helper function to get prediction from a single unit for parallelization."""
+    try:
+        if hasattr(unit, "predict_proba"):
+            return unit.predict_proba(X)
+        else:
+            d = unit.decision_function(X)
+            # Softmax to convert decision function to probabilities
+            exp_d = np.exp(d - np.max(d, axis=1, keepdims=True))
+            return exp_d / np.sum(exp_d, axis=1, keepdims=True)
+    except Exception:
+        # Return uniform probabilities as fallback
+        return np.ones((len(X), n_classes)) / n_classes
+
 # --- 7. THE TITAN-14 "BEAST MODE" (Endgame Edition) ---
 class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
     def __init__(self, verbose=False):
@@ -479,18 +494,9 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         # Gather all units including the now-evolved souls
         all_units = other_units + [self.unit_12, self.unit_13, self.unit_14]
 
-        # Get Predictions (Proba) on the validation set to learn who is lying
-        preds_proba = []
-        for unit in all_units:
-            try:
-                if hasattr(unit, "predict_proba"):
-                    p = unit.predict_proba(X_evo_v)
-                else:
-                    d = unit.decision_function(X_evo_v)
-                    p = np.exp(d) / np.sum(np.exp(d), axis=1, keepdims=True)
-                preds_proba.append(p)
-            except:
-                preds_proba.append(np.ones((len(X_evo_v), n_classes)) / n_classes)
+        # Get Predictions (Proba) on the validation set to learn who is lying (Parallelized)
+        with ThreadPoolExecutor() as executor:
+            preds_proba = list(executor.map(lambda u: _get_unit_prediction(u, X_evo_v, n_classes), all_units))
 
         # Optimization Function (Maximize Accuracy/Minimize Loss)
         def loss_func(w):
@@ -558,21 +564,15 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
             self.unit_12, self.unit_13, self.unit_14
         ]
 
-        final_pred = None
-        for i, unit in enumerate(all_units):
-            try:
-                if hasattr(unit, "predict_proba"):
-                    p = unit.predict_proba(X_scaled)
-                else:
-                    d = unit.decision_function(X_scaled)
-                    p = np.exp(d) / np.sum(np.exp(d), axis=1, keepdims=True)
-            except:
-                 p = np.ones((len(X), len(self.classes_))) / len(self.classes_)
+        # Parallelized unit predictions
+        n_classes = len(self.classes_)
+        with ThreadPoolExecutor() as executor:
+            preds_proba = list(executor.map(lambda u: _get_unit_prediction(u, X_scaled, n_classes), all_units))
 
-            if final_pred is None:
-                final_pred = self.weights_[i] * p
-            else:
-                final_pred += self.weights_[i] * p
+        # Weighted aggregation
+        final_pred = np.zeros_like(preds_proba[0])
+        for i, p in enumerate(preds_proba):
+            final_pred += self.weights_[i] * p
 
         return final_pred
 
