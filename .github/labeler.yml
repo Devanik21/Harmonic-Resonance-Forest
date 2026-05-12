@@ -1,0 +1,15 @@
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: ["docs/**", "*.md"]
+
+research:
+  - changed-files:
+    - any-glob-to-any-file: ["research/**"]
+
+frontend:
+  - changed-files:
+    - any-glob-to-any-file: ["frontend/**"]
+
+visualization:
+  - changed-files:
+    - any-glob-to-any-file: ["docs/images/**"]
