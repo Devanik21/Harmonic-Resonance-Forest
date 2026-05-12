@@ -1,5 +1,7 @@
 ## Description
 
+<!-- Please ensure your PR title follows the format: [Type] Description (e.g., [Feature] Add resonance kernel) -->
+
 Explain your changes briefly.
 
 ## Type of Change
