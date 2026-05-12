@@ -433,6 +433,8 @@ I validated HRF across diverse datasets to prove generalization, culminating in 
 
 ## 📚 Documentation & Resources
 
+- **[System Architecture](./docs/architecture.md):** High-level overview of the HRF Titan-26 framework and repository structure.
+- **[Pipeline Overview](./docs/pipeline_overview.md):** Detailed step-by-step workflow from signal acquisition to prediction.
 - **Main Repository:** [Harmonic Resonance Fields](https://github.com/Devanik21/Harmonic-Resonance-Forest/tree/main)
 - **Research Paper:** Technical documentation with full mathematical proofs
 - **Benchmark Code:** Reproducible experiments on OpenML 1471
