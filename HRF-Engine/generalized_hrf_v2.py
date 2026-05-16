@@ -61,14 +61,14 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
 
         Parameters
         ----------
-        X : ndarray
+        X : array-like of shape (n_samples, n_features)
             Feature matrix.
-        y : array-like
+        y : array-like of shape (n_samples,)
             Class labels.
 
         Returns
         -------
-        self
+        self : object
             Fitted estimator.
         """
         self.classes_ = np.unique(y)
