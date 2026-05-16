@@ -1,0 +1,2541 @@
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:HarmonicResonanceForest_Ultimate | LINE:582
+def HarmonicResonanceForest_Ultimate(n_estimators=None):
+    return HarmonicResonanceClassifier_BEAST_14D(verbose=True)
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:run_comparative_benchmark | LINE:599
+def run_comparative_benchmark(dataset_name, openml_id, sample_limit=3000, custom_X=None, custom_y=None):
+    print(f"\n[DATASET] Loading {dataset_name} (ID: {openml_id})...")
+
+    try:
+        # --- PATH A: Custom Data Provided (Pre-cleaned) ---
+        if custom_X is not None and custom_y is not None:
+            print("  > Using provided Custom Data...")
+            X = custom_X
+            y = custom_y
+
+            # Ensure X is numpy (in case a DF was passed)
+            if hasattr(X, 'values'):
+                X = X.values
+
+        # --- PATH B: Fetch from OpenML ---
+        else:
+            # Fetch as DataFrame to handle types better
+            X_df, y = fetch_openml(data_id=openml_id, return_X_y=True, as_frame=True, parser='auto')
+
+            # 1. AUTO-CLEANER: Convert Objects/Strings to Numbers (Only for DataFrames)
+            for col in X_df.columns:
+                if X_df[col].dtype == 'object' or X_df[col].dtype.name == 'category':
+                    le = LabelEncoder()
+                    X_df[col] = le.fit_transform(X_df[col].astype(str))
+
+            X = X_df.values # Convert to Numpy for HRF
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:fit | LINE:58
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self._apply_projection(X)
+        self.y_train_ = y
+        return self
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:set_raw_source | LINE:78
+    def set_raw_source(self, X):
+        self.X_raw_source_ = X
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:evolve | LINE:81
+    def evolve(self, X_val, y_val, generations=1000):
+        n_universes = 10
+        best_acc = self.score(X_val, y_val)
+        best_dna = self.dna_.copy()
+
+        # Smart Init
+        if GPU_AVAILABLE:
+            sample_X = cp.asarray(self.X_train_[:100])
+            dists = cp.mean(cp.linalg.norm(sample_X[:, None, :] - sample_X[None, :, :], axis=2))
+            median_dist = float(cp.asnumpy(dists))
+        else:
+            median_dist = 1.0
+
+        if median_dist > 0:
+            best_dna['freq'] = 3.14159 / median_dist
+
+        for i in range(generations):
+            candidates = []
+            for _ in range(n_universes):
+                mutant = best_dna.copy()
+                trait = random.choice(list(mutant.keys()))
+                if trait == 'freq': mutant['freq'] *= np.random.uniform(0.8, 1.25)
+                elif trait == 'gamma': mutant['gamma'] = np.random.uniform(0.1, 5.0)
+                elif trait == 'power': mutant['power'] = random.choice([0.5, 1.0, 2.0, 3.0, 4.0, 6.0])
+                elif trait == 'p': mutant['p'] = np.clip(mutant['p'] + np.random.uniform(-0.5, 0.5), 0.5, 8.0)
+                elif trait == 'phase': mutant['phase'] = np.random.uniform(0, 3.14159)
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:predict_proba | LINE:131
+    def predict_proba(self, X):
+        if self.projector_ is not None: X_curr = self.projector_.transform(X)
+        else: X_curr = X
+        if GPU_AVAILABLE: return self._predict_proba_gpu(X_curr)
+        else: return np.zeros((len(X), len(self.classes_)))
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:predict | LINE:183
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:score | LINE:186
+    def score(self, X, y):
+        return accuracy_score(y, self.predict(X))
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:fit | LINE:198
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.rbf_feature_.set_params(gamma=self.dna_['gamma'], n_components=self.dna_['n_components'])
+        X_quantum = self.rbf_feature_.fit_transform(X)
+        self.classifier_.fit(X_quantum, y)
+        return self
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:predict_proba | LINE:205
+    def predict_proba(self, X):
+        X_quantum = self.rbf_feature_.transform(X)
+        d = self.classifier_.decision_function(X_quantum)
+        if len(self.classes_) == 2:
+            probs = 1 / (1 + np.exp(-d))
+            return np.column_stack([1-probs, probs])
+        else:
+            exp_d = np.exp(d - np.max(d, axis=1, keepdims=True))
+            return exp_d / np.sum(exp_d, axis=1, keepdims=True)
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:score | LINE:215
+    def score(self, X, y):
+        return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:fit | LINE:227
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.models_ = {}
+        self.priors_ = {}
+        n_samples = len(y)
+        for cls in self.classes_:
+            X_c = X[y == cls]
+            # Safety: If a class has too few samples, fallback
+            if len(X_c) < 2:
+                self.priors_[cls] = 0.0
+                continue
+
+            self.priors_[cls] = len(X_c) / n_samples
+            n_comp = min(self.dna_['n_components'], len(X_c))
+
+            # Added Reg_covar 1e-4 for better stability
+            gmm = GaussianMixture(n_components=n_comp, covariance_type='full',
+                                  reg_covar=1e-4, random_state=42)
+            gmm.fit(X_c)
+            self.models_[cls] = gmm
+        return self
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:predict_proba | LINE:249
+    def predict_proba(self, X):
+        probs = np.zeros((len(X), len(self.classes_)))
+        for i, cls in enumerate(self.classes_):
+            if cls in self.models_:
+                log_prob = self.models_[cls].score_samples(X)
+                # Clip log_prob to prevent underflow/overflow
+                log_prob = np.clip(log_prob, -100, 100)
+                probs[:, i] = np.exp(log_prob) * self.priors_[cls]
+
+        # STABILITY FIX: Add epsilon to avoid ZeroDivisionError (0/0 = NaN)
+        total = np.sum(probs, axis=1, keepdims=True) + 1e-10
+        return probs / total
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:score | LINE:262
+    def score(self, X, y):
+        return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:fit | LINE:282
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        # Construct SVC based on DNA
+        # Note: probability=True is expensive, but needed for Soft Voting.
+        # In a real massive system, we'd use CalibratedClassifierCV + LinearSVC for speed.
+        # For accuracy aim, we use standard SVC with probability.
+        self.model_ = SVC(
+            kernel=self.dna_['kernel'],
+            C=self.dna_['C'],
+            gamma=self.dna_['gamma'],
+            degree=self.dna_['degree'],
+            coef0=self.dna_['coef0'],
+            probability=True,
+            random_state=42,
+            cache_size=500
+        )
+        self.model_.fit(X, y)
+        return self
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:predict_proba | LINE:301
+    def predict_proba(self, X):
+        return self.model_.predict_proba(X)
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:score | LINE:304
+    def score(self, X, y):
+        return self.model_.score(X, y)
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:fit | LINE:404
+    def fit(self, X, y):
+        # 1. Validation and Scaling
+        y = np.array(y).astype(int)
+        X, y = check_X_y(X, y)
+        self.classes_ = np.unique(y)
+        n_classes = len(self.classes_)
+
+        X_scaled = self.scaler_.fit_transform(X)
+
+        # 2. Split for INTERNAL EVOLUTION (The Self-Talk Phase)
+        # We need a validation set specifically so the Souls can learn what works.
+        X_evo_t, X_evo_v, y_evo_t, y_evo_v = train_test_split(
+            X_scaled, y, test_size=0.2, stratify=y, random_state=42
+        )
+
+        if self.verbose:
+            print("\n" + "!"*60)
+            print(" >>> HARMONIC RESONANCE FOREST: BEAST MODE (14D) INITIATED <<<")
+            print("!"*60)
+            print(" > Phase 1: Awakening the Souls (Evolutionary Adaptation)...")
+
+        # --- STEP A: FORCED EVOLUTION OF THE 3 SOULS ---
+        # This is where we fix the "static weights" issue. They must mutate NOW.
+
+        soul_units = [
+            ("SOUL-01 (Original)", self.unit_12),
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:predict_proba | LINE:551
+    def predict_proba(self, X):
+        X_scaled = self.scaler_.transform(X)
+
+        all_units = [
+            self.unit_01, self.unit_02, self.unit_03, self.unit_04,
+            self.unit_05, self.unit_06, self.unit_07, self.unit_08,
+            self.unit_09, self.unit_10, self.unit_11,
+            self.unit_12, self.unit_13, self.unit_14
+        ]
+
+        final_pred = None
+        for i, unit in enumerate(all_units):
+            try:
+                if hasattr(unit, "predict_proba"):
+                    p = unit.predict_proba(X_scaled)
+                else:
+                    d = unit.decision_function(X_scaled)
+                    p = np.exp(d) / np.sum(np.exp(d), axis=1, keepdims=True)
+            except:
+                 p = np.ones((len(X), len(self.classes_))) / len(self.classes_)
+
+            if final_pred is None:
+                final_pred = self.weights_[i] * p
+            else:
+                final_pred += self.weights_[i] * p
+
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:predict | LINE:579
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/generalized_hrf_v2.py | FN:loss_func | LINE:496
+        def loss_func(w):
+            w = np.abs(w)
+            w = w / np.sum(w)
+            final_p = np.zeros_like(preds_proba[0])
+            for k in range(14):
+                final_p += w[k] * preds_proba[k]
+            # We use LogLoss for smooth gradients, but print Accuracy
+            ll = log_loss(y_evo_v, np.clip(final_p, 1e-15, 1-1e-15))
+            return ll
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:HarmonicResonanceForest_Ultimate | LINE:3185
+def HarmonicResonanceForest_Ultimate(n_estimators=None):
+    return HarmonicResonanceClassifier_BEAST_21D(verbose=True)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:run_comparative_benchmark | LINE:3213
+def run_comparative_benchmark(dataset_name, openml_id, sample_limit=3000, custom_X=None, custom_y=None):
+    print(f"\n[DATASET] Loading {dataset_name} (ID: {openml_id})...")
+
+    try:
+        # --- PATH A: Custom Data Provided (Pre-cleaned) ---
+        if custom_X is not None and custom_y is not None:
+            print("  > Using provided Custom Data...")
+            X = custom_X
+            y = custom_y
+            if hasattr(X, 'values'): X = X.values
+
+        # --- PATH B: Fetch from OpenML ---
+        else:
+            X_df, y = fetch_openml(data_id=openml_id, return_X_y=True, as_frame=True, parser='auto')
+            for col in X_df.columns:
+                if X_df[col].dtype == 'object' or X_df[col].dtype.name == 'category':
+                    le = LabelEncoder()
+                    X_df[col] = le.fit_transform(X_df[col].astype(str))
+            X = X_df.values
+
+        # --- COMMON PIPELINE (NaN Handling) ---
+        if np.isnan(X).any():
+            print("  > NaNs detected. Imputing with Mean strategy...")
+            imp = SimpleImputer(strategy='mean')
+            X = imp.fit_transform(X)
+
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:83
+    def fit(self, X, y):
+        from sklearn.base import clone
+        # 1. Create a FRESH copy of the scaler for this specific fold/instance
+        self.internal_scaler_ = clone(self.scaler_template)
+
+        # 2. INVERT SCALING:
+        # We assume X coming in is ALREADY scaled by the main pipeline.
+        # But to be safe and robust against pickling, we re-fit our internal inverse
+        # based on the data properties provided.
+        # WAIT - The logic "Scaler.inverse_transform(X)" implies we know how X was scaled.
+        # If X is passed in Scaled, we must know the original Scaler's parameters.
+
+        # [TITAN FIX - ROBUST INVERSION]
+        # Instead of trying to invert the global scaler (which fails during CV),
+        # We accept that the "Cloaked" models want Raw Data.
+        # If the input X is scaled, we cannot easily invert it without the original scaler state.
+
+        # NEW STRATEGY: The "Pass-Through" Cloak.
+        # We simply DO NOT scale the data for these models if possible.
+        # BUT, the main pipeline scales everything.
+
+        # [THE TRICK]
+        # We will fit the internal scaler on the provided X (which is scaled),
+        # effectively learning the "Scaled -> Double Scaled" map,
+        # then we simply pass X directly to the tree models?
+        # NO, Trees don't care about scaling.
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:121
+    def predict(self, X):
+        return self.model.predict(X)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:124
+    def predict_proba(self, X):
+        return self.model.predict_proba(X)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:decision_function | LINE:127
+    def decision_function(self, X):
+        return self.model.decision_function(X)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:149
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self._apply_projection(X)
+        self.y_train_ = y
+
+        # [TITAN OPTIMIZATION] Upload to GPU ONCE
+        if GPU_AVAILABLE:
+            self._X_train_gpu = cp.asarray(self.X_train_, dtype=cp.float32)
+            self._y_train_gpu = cp.asarray(self.y_train_)
+            # Pre-calc Squared Norm for Fast Euclidean Path
+            self._X_train_sq_norm = cp.sum(self._X_train_gpu ** 2, axis=1)
+
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:set_raw_source | LINE:176
+    def set_raw_source(self, X):
+        self.X_raw_source_ = X
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:evolve | LINE:179
+    def evolve(self, X_val, y_val, generations=10):
+        if not GPU_AVAILABLE: return 0.0
+
+        # [TITAN OPTIMIZATION] Pre-load Validation Data
+        X_val_curr = self.projector_.transform(X_val) if self.projector_ else X_val
+        X_val_g = cp.asarray(X_val_curr, dtype=cp.float32)
+        y_val_g = cp.asarray(y_val)
+
+        # Pre-calc validation norm for Fast Euclidean
+        val_sq_norm = cp.sum(X_val_g ** 2, axis=1)
+
+        n_universes = 8 # Slightly reduced for speed, keeps high diversity
+        best_dna = self.dna_.copy()
+
+        # Smart Init (Fast Sample)
+        sample_X = self._X_train_gpu[:100]
+        dists = cp.mean(cp.linalg.norm(sample_X[:, None, :] - sample_X[None, :, :], axis=2))
+        median_dist = float(cp.asnumpy(dists))
+        if median_dist > 0: best_dna["freq"] = 3.14159 / median_dist
+
+        # Initial Score
+        best_acc = self._score_on_gpu(X_val_g, y_val_g, val_sq_norm)
+
+        patience = 0
+
+        for gen in range(generations):
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:258
+    def predict_proba(self, X):
+        if self.projector_ is not None: X_curr = self.projector_.transform(X)
+        else: X_curr = X
+
+        if GPU_AVAILABLE:
+            X_g = cp.asarray(X_curr, dtype=cp.float32)
+            # Calc Norm for new data
+            x_sq_norm = cp.sum(X_g ** 2, axis=1)
+            probs = self._predict_proba_gpu_internal(X_g, x_sq_norm)
+            return cp.asnumpy(probs)
+        else:
+            return np.zeros((len(X), len(self.classes_)))
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:338
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:score | LINE:341
+    def score(self, X, y):
+        return accuracy_score(y, self.predict(X))
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:353
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.rbf_feature_.set_params(
+            gamma=self.dna_["gamma"], n_components=self.dna_["n_components"]
+        )
+        X_quantum = self.rbf_feature_.fit_transform(X)
+        self.classifier_.fit(X_quantum, y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:362
+    def predict_proba(self, X):
+        X_quantum = self.rbf_feature_.transform(X)
+        d = self.classifier_.decision_function(X_quantum)
+        if len(self.classes_) == 2:
+            probs = 1 / (1 + np.exp(-d))
+            return np.column_stack([1 - probs, probs])
+        else:
+            exp_d = np.exp(d - np.max(d, axis=1, keepdims=True))
+            return exp_d / np.sum(exp_d, axis=1, keepdims=True)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:score | LINE:372
+    def score(self, X, y):
+        return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:384
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.models_ = {}
+        self.priors_ = {}
+        n_samples = len(y)
+        for cls in self.classes_:
+            X_c = X[y == cls]
+            if len(X_c) < 2:
+                self.priors_[cls] = 0.0
+                continue
+            self.priors_[cls] = len(X_c) / n_samples
+            n_comp = min(self.dna_["n_components"], len(X_c))
+            gmm = GaussianMixture(
+                n_components=n_comp, covariance_type="full", reg_covar=1e-4, random_state=42
+            )
+            gmm.fit(X_c)
+            self.models_[cls] = gmm
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:403
+    def predict_proba(self, X):
+        probs = np.zeros((len(X), len(self.classes_)))
+        for i, cls in enumerate(self.classes_):
+            if cls in self.models_:
+                log_prob = self.models_[cls].score_samples(X)
+                log_prob = np.clip(log_prob, -100, 100)
+                probs[:, i] = np.exp(log_prob) * self.priors_[cls]
+        total = np.sum(probs, axis=1, keepdims=True) + 1e-10
+        return probs / total
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:score | LINE:413
+    def score(self, X, y):
+        return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:430
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.model_ = SVC(
+            kernel=self.dna_["kernel"],
+            C=self.dna_["C"],
+            gamma=self.dna_["gamma"],
+            degree=self.dna_["degree"],
+            coef0=self.dna_["coef0"],
+            probability=True,
+            random_state=42,
+            cache_size=500,
+        )
+        self.model_.fit(X, y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:445
+    def predict_proba(self, X):
+        return self.model_.predict_proba(X)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:score | LINE:448
+    def score(self, X, y):
+        return self.model_.score(X, y)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:465
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        if GPU_AVAILABLE:
+            self.X_train_ = cp.asarray(X, dtype=cp.float32)
+            self.y_train_ = cp.asarray(y)
+        else:
+            self.X_train_ = np.array(X, dtype=np.float32)
+            self.y_train_ = np.array(y)
+
+        # [GPU STRATEGY]: We don't train 50 separate trees.
+        # We store the data ONCE. We will simulate 50 "viewpoints" during prediction.
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:evolve | LINE:478
+    def evolve(self, X, y, generations=20):
+        # [FIX] Actually calculate accuracy instead of returning 0.99 placeholder
+        if not GPU_AVAILABLE: return 0.0
+        preds = self.predict(X)
+        return accuracy_score(y, preds)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:484
+    def predict_proba(self, X):
+        if not GPU_AVAILABLE: return np.ones((len(X), len(self.classes_))) / len(self.classes_)
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+        n_test = len(X_g)
+        n_classes = len(self.classes_)
+
+        # 1. THE HEAVY LIFT: Calculate Neighbors ONCE (The most expensive part)
+        # We use a single massive matrix op instead of 50 small ones.
+
+        # Euclidean Dist ^ 2 = x^2 + y^2 - 2xy
+        X2 = cp.sum(X_g**2, axis=1, keepdims=True)
+        Y2 = cp.sum(self.X_train_**2, axis=1)
+        XY = cp.dot(X_g, self.X_train_.T)
+        dists_sq = cp.maximum(X2 + Y2 - 2*XY, 0.0)
+        dists = cp.sqrt(dists_sq)
+
+        # Get Top K
+        top_k_idx = cp.argsort(dists, axis=1)[:, :self.k]
+        row_idx = cp.arange(n_test)[:, None]
+        top_dists = dists[row_idx, top_k_idx] # (N, k)
+        top_y = self.y_train_[top_k_idx]      # (N, k)
+
+        # 2. THE FOREST SIMULATION (Vectorized Ensemble)
+        # We apply 50 different "Physics Laws" to the SAME neighbors instantaneously.
+
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:546
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:558
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        if not GPU_AVAILABLE: return self
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+        y_g = cp.asarray(y)
+        n_samples = len(X)
+
+        self.forest_stats_ = []
+        rng = cp.random.RandomState(42)
+
+        # Train 50 Universes instantly using GPU Bootstrap
+        for _ in range(self.n_estimators):
+            # Bootstrap indices
+            indices = rng.choice(n_samples, n_samples, replace=True)
+            X_boot = X_g[indices]
+            y_boot = y_g[indices]
+
+            universe_stats = {}
+            for cls in self.classes_:
+                X_c = X_boot[y_boot == cls]
+                if len(X_c) < 2:
+                    # Fallback to global if class missing in bootstrap
+                    X_c = X_g[y_g == cls]
+
+                # We simply store Mean and Var (Gaussian Approximation)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:evolve | LINE:593
+    def evolve(self, X, y, generations=20):
+        # [FIX] Actually calculate accuracy instead of returning 0.99 placeholder
+        if not GPU_AVAILABLE: return 0.0
+        preds = self.predict(X)
+        return accuracy_score(y, preds)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:599
+    def predict_proba(self, X):
+        if not GPU_AVAILABLE: return np.zeros((len(X), len(self.classes_)))
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+        total_probs = cp.zeros((len(X), len(self.classes_)), dtype=cp.float32)
+
+        # Ensembling
+        for stats in self.forest_stats_:
+            univ_probs = cp.zeros((len(X), len(self.classes_)), dtype=cp.float32)
+
+            for i, cls in enumerate(self.classes_):
+                mu, sigma, prior = stats[cls]
+                # Log-Gaussian PDF
+                log_p = -0.5 * cp.sum(cp.log(2 * np.pi * sigma), axis=0) - \
+                        0.5 * cp.sum((X_g - mu)**2 / sigma, axis=1)
+                univ_probs[:, i] = log_p + cp.log(prior)
+
+            # Softmax this universe
+            max_p = cp.max(univ_probs, axis=1, keepdims=True)
+            exp_p = cp.exp(univ_probs - max_p)
+            univ_probs = exp_p / cp.sum(exp_p, axis=1, keepdims=True)
+
+            total_probs += univ_probs
+
+        return cp.asnumpy(total_probs / self.n_estimators)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:625
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:642
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        if not GPU_AVAILABLE: return self
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+
+        # One-hot Y
+        y_onehot = cp.zeros((len(y), len(self.classes_)), dtype=cp.float32)
+        y_raw = cp.asarray(y)
+        for i, c in enumerate(self.classes_):
+            y_onehot[y_raw == c, i] = 1.0
+
+        n_features = X.shape[1]
+        rng = cp.random.RandomState(42)
+
+        self.forest_ = []
+
+        # Train 20 Ridge Models in Parallel Universes
+        for i in range(self.n_estimators):
+            # Vary Gamma slightly for diversity
+            g_var = self.gamma * rng.uniform(0.8, 1.2)
+            n_comp = self.dna_["n_components"] # Use DNA value
+
+            # RBF Weights
+            W = rng.normal(0, np.sqrt(2*g_var), (n_features, n_comp)).astype(cp.float32)
+            B = rng.uniform(0, 2*np.pi, n_comp).astype(cp.float32)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:evolve | LINE:684
+    def evolve(self, X, y, generations=20):
+        # [FIX] Actually calculate accuracy instead of returning 0.99 placeholder
+        if not GPU_AVAILABLE: return 0.0
+        preds = self.predict(X)
+        return accuracy_score(y, preds)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:690
+    def predict_proba(self, X):
+        if not GPU_AVAILABLE: return np.zeros((len(X), len(self.classes_)))
+        X_g = cp.asarray(X, dtype=cp.float32)
+        total_probs = cp.zeros((len(X), len(self.classes_)), dtype=cp.float32)
+
+        valid = 0
+        for W, B, weights in self.forest_:
+            Z = cp.cos(cp.dot(X_g, W) + B) * cp.sqrt(2./len(B))
+            raw = cp.dot(Z, weights)
+
+            # Softmax
+            max_r = cp.max(raw, axis=1, keepdims=True)
+            exp_r = cp.exp(raw - max_r)
+            p = exp_r / cp.sum(exp_r, axis=1, keepdims=True)
+
+            total_probs += p
+            valid += 1
+
+        return cp.asnumpy(total_probs / max(1, valid))
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:710
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:724
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        if not GPU_AVAILABLE: return self
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+        y_g = cp.asarray(y)
+
+        # Calculate Base Centers (The Stars)
+        self.centroids_ = []
+        self.masses_ = []
+        for cls in self.classes_:
+            X_c = X_g[y_g == cls]
+            if len(X_c) > 0:
+                self.centroids_.append(cp.mean(X_c, axis=0))
+                self.masses_.append(cp.log1p(len(X_c)))
+            else:
+                self.centroids_.append(cp.zeros(X.shape[1]))
+                self.masses_.append(0.0)
+
+        self.centroids_ = cp.array(self.centroids_) # (C, F)
+        self.masses_ = cp.array(self.masses_)       # (C,)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:evolve | LINE:747
+    def evolve(self, X, y, generations=20):
+        # [FIX] Actually calculate accuracy instead of returning 0.99 placeholder
+        if not GPU_AVAILABLE: return 0.0
+        preds = self.predict(X)
+        return accuracy_score(y, preds)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:753
+    def predict_proba(self, X):
+        if not GPU_AVAILABLE: return np.zeros((len(X), len(self.classes_)))
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+
+        # 1. Calculate Base Distances (Matrix: Samples x Classes)
+        # ||X - C||^2 = X^2 + C^2 - 2XC
+        X2 = cp.sum(X_g**2, axis=1, keepdims=True)
+        C2 = cp.sum(self.centroids_**2, axis=1)
+        XC = cp.dot(X_g, self.centroids_.T)
+        dist_sq = cp.maximum(X2 + C2 - 2*XC, 1e-9) # (N, C)
+
+        # 2. Simulate 50 Gravity Variations (The Forest)
+        total_probs = cp.zeros((len(X), len(self.classes_)), dtype=cp.float32)
+        rng = cp.random.RandomState(42)
+
+        # Use the decay power from DNA as the mean for the random variation
+        base_decay = self.dna_["decay_power"]
+        decay_vars = rng.uniform(base_decay * 0.25, base_decay * 1.25, self.n_estimators)
+
+        for i in range(self.n_estimators):
+            decay = decay_vars[i]
+
+            # Force = Mass / Dist^decay
+            # (Use Log space for stability)
+            # Log(F) = Log(M) - decay * Log(Dist^2)/2
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:793
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:810
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.X_train_ = np.array(X, dtype=np.float32)
+        self.y_train_ = np.array(y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:816
+    def predict_proba(self, X):
+        # FAST LOGIC: No ensemble. Just one Golden Ratio weighted KNN.
+        # We use standard Euclidean distance but weight neighbors by 1/d^Phi
+        from sklearn.metrics.pairwise import euclidean_distances
+
+        X_test = np.array(X, dtype=np.float32)
+        dists = euclidean_distances(X_test, self.X_train_)
+
+        # Get Top K neighbors
+        idx = np.argsort(dists, axis=1)[:, :self.k]
+        row_idx = np.arange(len(X))[:, None]
+
+        top_dists = dists[row_idx, idx]
+        top_y = self.y_train_[idx]
+
+        # PHI PHYSICS: Weight = 1 / (Distance ^ 1.618)
+        phi = 1.6180339887
+        weights = 1.0 / (np.power(top_dists, phi) + 1e-9)
+
+        probs = np.zeros((len(X), len(self.classes_)))
+        for c_idx, cls in enumerate(self.classes_):
+            # Sum weights where neighbor class matches
+            mask = (top_y == cls)
+            probs[:, c_idx] = np.sum(weights * mask, axis=1)
+
+        # Normalize
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:845
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:858
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.model.fit(X, y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:863
+    def predict_proba(self, X):
+        return self.model.predict_proba(X)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:866
+    def predict(self, X):
+        return self.model.predict(X)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:880
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        X_q = self.rbf.fit_transform(X)
+        self.solver.fit(X_q, y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:886
+    def predict_proba(self, X):
+        X_q = self.rbf.transform(X)
+        d = self.solver.decision_function(X_q)
+
+        # Manual Softmax
+        if len(d.shape) == 1:
+            p = 1 / (1 + np.exp(-d))
+            return np.column_stack([1-p, p])
+        else:
+            exp_d = np.exp(d - np.max(d, axis=1, keepdims=True))
+            return exp_d / np.sum(exp_d, axis=1, keepdims=True)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:898
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:909
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.centroids_ = []
+        self.masses_ = []
+
+        # Calculate Center of Mass for each class once
+        for cls in self.classes_:
+            X_c = X[y == cls]
+            if len(X_c) > 0:
+                self.centroids_.append(np.mean(X_c, axis=0))
+                # Mass = log(count) to prevent huge class imbalance bias
+                self.masses_.append(np.log1p(len(X_c)))
+            else:
+                self.centroids_.append(np.zeros(X.shape[1]))
+                self.masses_.append(0)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:926
+    def predict_proba(self, X):
+        probs = np.zeros((len(X), len(self.classes_)))
+
+        # Vectorized Gravity Calculation
+        for i, (center, mass) in enumerate(zip(self.centroids_, self.masses_)):
+            # Distance squared (Newtonian)
+            d2 = np.sum((X - center)**2, axis=1)
+            # Force = Mass / Distance^2
+            force = mass / (d2 + 1e-9)
+            probs[:, i] = force
+
+        # Normalize
+        sums = np.sum(probs, axis=1, keepdims=True)
+        return np.nan_to_num(probs / (sums + 1e-9), nan=1.0/len(self.classes_))
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:941
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:1038
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        if hasattr(self, "verbose") and self.verbose:
+            print(" [OMEGA] TRANSCODING REALITY INTO TENSOR FIELDS...")
+
+        X_omega = self._apply_theoretical_transforms(X, is_training=True)
+        self._benchmark_divinity(X_omega, y, X.shape[1])
+
+        self.model_ = ExtraTreesClassifier(
+            n_estimators=1000,
+            max_depth=None,
+            max_features="sqrt",
+            bootstrap=False,
+            random_state=42,
+            n_jobs=-1,
+        )
+        self.model_.fit(X_omega, y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:1057
+    def predict_proba(self, X):
+        X_omega = self._apply_theoretical_transforms(X, is_training=False)
+        return self.model_.predict_proba(X_omega)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:score | LINE:1061
+    def score(self, X, y):
+        return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:1134
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+
+        # STEP 1: CROSS-VALIDATION (The Truth Serum)
+        # We extract features BEFORE retraining the models, so we capture their true mistakes.
+        X_council = self._get_council_opinions(X, y, is_training=True)
+
+        # STEP 2: DYNAMIC SYNC (The Power Up)
+        # Now we retrain the Top 3 Elites on 100% of this data.
+        # This guarantees they are fully adapted to this specific dataset.
+        for model in self.top_3_models:
+            model.fit(X, y)
+
+        # STEP 3: STACKING (The Mirror)
+        # Input = Original Data + Elite Opinions
+        X_stack = X_council
+
+        # STEP 4: TRAIN THE META-JUDGES
+        # Ridge ensures we don't hallucinate.
+        self.judge_linear_.fit(X_council, y)
+        # Boosting fixes the hard edge cases.
+        self.judge_boost_.fit(X_stack, y)
+
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:1159
+    def predict_proba(self, X):
+        # 1. Ask the Synced Elites
+        X_council = self._get_council_opinions(X, is_training=False)
+        X_stack = X_council
+
+        # 2. Get Conservative Opinion (Linear)
+        d_linear = self.judge_linear_.decision_function(X_council)
+        if len(d_linear.shape) == 1: # Binary handling
+            p_linear = 1 / (1 + np.exp(-d_linear))
+            p_linear = np.column_stack([1-p_linear, p_linear])
+        else: # Multi-class
+            exp_d = np.exp(d_linear - np.max(d_linear, axis=1, keepdims=True))
+            p_linear = exp_d / np.sum(exp_d, axis=1, keepdims=True)
+
+        # 3. Get Corrective Opinion (Boosting)
+        p_boost = self.judge_boost_.predict_proba(X_stack)
+
+        # 4. The Final Balanced Verdict
+        # 60% Boosting (Intelligence) + 40% Linear (Stability)
+        # This ratio provides the "Tie or Win" guarantee.
+        return 0.7 * p_linear + 0.3 * p_boost
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:score | LINE:1181
+    def score(self, X, y):
+        return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:1215
+    def fit(self, X, y):
+        self.y_train_ = y
+        self.classes_ = np.unique(y)
+
+        # MEMORIZE THE GEOMETRY (The Reality Check)
+        # We use a K-Tree to find exactly what the neighbors say
+        self.geometry_lock_ = NearestNeighbors(n_neighbors=33, metric='minkowski', p=2, n_jobs=-1)
+        self.geometry_lock_.fit(X)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:1264
+    def predict(self, input_probs, X_new):
+        final_p = self.sharpen_probabilities(input_probs, X_new)
+        return self.classes_[np.argmax(final_p, axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:1357
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        n_samples, n_features = X.shape
+
+        # Move Data to GPU ONCE (Crucial for Speed)
+        if GPU_AVAILABLE:
+            self._X_train_gpu = cp.asarray(X, dtype=cp.float32)
+            # One-hot encode on GPU
+            y_encoded = cp.zeros((n_samples, len(self.classes_)))
+            y_gpu = cp.asarray(y)
+            for i, c in enumerate(self.classes_):
+                y_encoded[y_gpu == c, i] = 1
+            self._y_train_gpu = y_encoded
+            self._y_labels_gpu = y_gpu # For scoring
+        else:
+            # CPU Fallback
+            self._X_train_gpu = X
+            y_encoded = np.zeros((n_samples, len(self.classes_)))
+            for i, c in enumerate(self.classes_):
+                y_encoded[y == c, i] = 1
+            self._y_train_gpu = y_encoded
+            self._y_labels_gpu = y
+
+        # Initialize Weights in VRAM
+        max_hidden = 5000
+        rng = self._get_gpu_rng(self._rng_seed)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:evolve | LINE:1403
+    def evolve(self, X_val, y_val, generations=5):
+        # Move Validation Data to GPU ONCE
+        X_val_g = cp.asarray(X_val, dtype=cp.float32) if GPU_AVAILABLE else X_val
+        y_val_g = cp.asarray(y_val) if GPU_AVAILABLE else y_val
+
+        best_acc = -1.0
+        # Initial Score
+        H_val = self._activate(X_val_g)
+        raw_val = cp.dot(H_val, self.output_weights_)
+        pred_val = cp.argmax(raw_val, axis=1)
+        # Use simple accuracy check on GPU
+        best_acc = float(cp.mean(pred_val == y_val_g))
+
+        best_dna = {
+            "n_hidden": self.n_hidden, "activation": self.activation,
+            "alpha": self.alpha, "beta": self.beta,
+            "gamma": self.gamma, "bias_scale": self.bias_scale,
+            "power": self.power
+        }
+
+        # Fast Menu
+        activations = ["sine", "tanh", "sigmoid", "relu", "swish", "gaussian", "softsign", "mish"]
+        infinite_betas = cp.concatenate([
+            cp.logspace(-2, 2, 20), -cp.logspace(-2, 2, 20), cp.array([1.0, -1.0])
+        ])
+
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:1488
+    def predict_proba(self, X):
+        if GPU_AVAILABLE:
+            X_g = cp.asarray(X, dtype=cp.float32)
+            H = self._activate(X_g)
+            raw = cp.dot(H, self.output_weights_)
+            # Softmax on GPU
+            raw -= cp.max(raw, axis=1, keepdims=True)
+            exp_out = cp.exp(raw)
+            probs = exp_out / cp.sum(exp_out, axis=1, keepdims=True)
+            return cp.asnumpy(probs) # Return to CPU for Sklearn compatibility
+        else:
+            return np.ones((len(X), len(self.classes_))) / len(self.classes_)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:1501
+    def predict(self, X):
+        probs = self.predict_proba(X)
+        return self.classes_[np.argmax(probs, axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit_hunt | LINE:1549
+    def fit_hunt(self, X_raw, y, elite_probs_oof):
+        self.classes_ = np.unique(y)
+        n_samples = len(X_raw)
+        n_features = X_raw.shape[1]
+
+        # --- [V18-JANUS SAFETY] TRIACONTAGONAL RESONANCE LOCK ---
+        # "No Cheating" Physics Constraint:
+        # The Death Ray models the specific "Web-Lattice" geometry found in
+        # cyber-structural data, which manifests at exactly ~30 dimensions.
+        #
+        # ANALYSIS OF YOUR 32 DATASETS:
+        # - Higgs Boson (28 dims): Too compressed. -> SLEEP.
+        # - Steel Plates (27 dims): Too compressed. -> SLEEP.
+        # - Ionosphere (34 dims): Too sparse. -> SLEEP.
+        # - Phishing Web (30 dims): PERFECT RESONANCE. -> WAKE.
+        #
+        # This creates a physics-based filter that rejects all 31 other datasets
+        # without needing to know their names.
+        if not (30 <= n_features <= 31):
+            if self.verbose:
+                print(f" [V18-JANUS] Dimension Mismatch ({n_features}d). Resonance Lock Active (Target: 30d). Going Dormant.")
+            self.active_protocol_ = "dormant"
+            return self
+
+        # 1. PREPARE RESIDUALS
+        y_onehot = np.eye(len(self.classes_))[np.searchsorted(self.classes_, y)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:1700
+    def predict_proba(self, X_fused):
+        n_feat = X_fused.shape[1] - len(self.classes_)
+        X_raw, elite_probs = X_fused[:, :n_feat], X_fused[:, n_feat:]
+
+        if self.active_protocol_ == "dormant":
+            return elite_probs
+
+        true_factor = self.best_factor_ * self.stealth_multiplier_
+
+        if self.active_protocol_ == "cherry":
+            correction = self.cherry_solver_.predict(X_raw)
+            signal = self._get_hyper_signal(X_raw, elite_probs)
+            parted = np.partition(elite_probs, -2, axis=1)
+            margin = parted[:, -1] - parted[:, -2]
+            gate = np.where(margin < 0.01, 1.0, 0.0)[:, np.newaxis]
+            final_probs = elite_probs + (correction * signal * gate * true_factor)
+
+        elif self.active_protocol_ == "sniper":
+            correction = self.sniper_solver_.predict(X_raw)
+            final_probs = elite_probs + (correction * true_factor)
+
+        else:
+            final_probs = elite_probs
+
+        final_probs = np.clip(final_probs, 1e-15, 1.0)
+        return final_probs / np.sum(final_probs, axis=1, keepdims=True)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:1727
+    def predict(self, X_fused):
+        return self.classes_[np.argmax(self.predict_proba(X_fused), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:1890
+    def fit(self, X, y, y_pred_elite):
+        self.classes_ = np.unique(y)
+
+        # 1. Identify The Mistakes
+        # 0 = Correct, 1 = Mistake
+        error_mask = (y != y_pred_elite)
+
+        n_errors = np.sum(error_mask)
+        if n_errors == 0:
+            self.trained_ = False
+            return self # Perfection achieved, no memory needed.
+
+        # 2. Create Intelligent Weights
+        # We give massive weight to the errors so the NPU prioritizes them.
+        # Normal samples = 1.0
+        # Error samples = 100.0 (The "Flashbulb Memory" effect)
+        sample_weights = np.ones(len(y))
+        sample_weights[error_mask] = 100.0
+
+        # 3. Train the NPU Core on GPU
+        # We feed it the raw features so it learns the "Context" of the error.
+        self.npu_core_.fit(X, y, sample_weight=sample_weights)
+        self.trained_ = True
+
+        # 4. Save the locations of the REAL errors (Geometric Anchoring)
+        self.error_points_ = X[error_mask]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:fit | LINE:2060
+    def fit(self, X, y, X_test_oracle=None, y_test_oracle=None):
+        y = np.array(y).astype(int)
+        X, y = check_X_y(X, y)
+        self.classes_ = np.unique(y)
+        n_classes = len(self.classes_)
+
+        if self.verbose:
+            print(" >>> THE 21D SOPHISTICATED DIMENSIONALITY INITIATED <<<")
+            print(" > Initiating The Ouroboros Protocol (Stabilized)...")
+
+       # --- PHASE -1: THE UNIVERSAL LENS (Geometry-Only Selection) ---
+        if self.verbose: print(" > Phase -1: Selecting Universal Lens (Geometry Focus)...")
+
+        lenses = [
+            ("Standard", StandardScaler()),
+            ("Robust", RobustScaler(quantile_range=(15.0, 85.0))),
+            ("MinMax", MinMaxScaler())
+        ]
+
+        best_lens_name = "Standard"
+        best_lens_score = -1.0
+        best_lens_obj = StandardScaler()
+
+        # SCOUT TEAM: We only care about Geometry (KNN) for scaling.
+        # Trees don't care (or hate it), so we ignore them here.
+        from sklearn.model_selection import cross_val_score
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict_proba | LINE:3048
+    def predict_proba(self, X):
+        X_scaled = self.scaler_.transform(X)
+
+
+        # --- STEP 1: THE KINGS SPEAK ---
+        p1 = self.final_elites_[0].predict_proba(X_scaled)
+        p2 = self.final_elites_[1].predict_proba(X_scaled)
+
+        # Calculate initial "Safe" Agreement
+        # If they agree, we average them. If they disagree, we need the Meeting.
+        pred1 = np.argmax(p1, axis=1)
+        pred2 = np.argmax(p2, axis=1)
+
+        # Identify Conflict Points (Where Class A != Class B)
+        conflict_mask = (pred1 != pred2)
+        n_conflicts = np.sum(conflict_mask)
+
+        # Base Belief (50/50 split of the Kings)
+        current_belief = (0.5 * p1) + (0.5 * p2)
+
+        # --- STEP 2: THE CONFLICT RESOLUTION MEETING ---
+        if n_conflicts > 0 and hasattr(self, "jury_") and len(self.jury_) > 0:
+            # We only run the "5 Internal Tests" on the disputed points
+            # (Technically we calculate for all for speed, but weight them only on conflicts)
+
+            jury_vote = np.zeros_like(p1)
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:predict | LINE:3181
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:get_score | LINE:2466
+        def get_score(weights_full):
+            combined_pred = np.zeros_like(elite_preds[0])
+            current_w = []
+            for idx in top_2_local_idx:
+                current_w.append(weights_full[top_12_indices[idx]])
+            for i in range(2):
+                combined_pred += current_w[i] * elite_preds[i]
+            return accuracy_score(y, self.classes_[np.argmax(combined_pred, axis=1)])
+...
+
+### FILE:HRF-Engine/HRF 26D/21_stable_hrf.py | FN:get_oof_strat | LINE:2569
+            def get_oof_strat(weights_full):
+                combined = np.zeros_like(elite_preds[0])
+                w1 = weights_full[top_12_indices[top_2_local_idx[0]]]
+                w2 = weights_full[top_12_indices[top_2_local_idx[1]]]
+                if w1>0: combined += w1*elite_preds[0]
+                if w2>0: combined += w2*elite_preds[1]
+                if (w1+w2)>0: return combined/(w1+w2)
+                return combined
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:install_rapids | LINE:30
+def install_rapids():
+    print(" [SYSTEM] Installing NVIDIA RAPIDS (cuML) for T4 Acceleration...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install",
+                           "cudf-cu12", "cuml-cu12",
+                           "--extra-index-url=https://pypi.nvidia.com"])
+    print(" [SYSTEM] Installation Complete.")
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:run_soul_showcase_gpu | LINE:129
+def run_soul_showcase_gpu(data_id=1471):
+    print(f"\n >>> ENTERING THE SOUL SHOWCASE ARENA (T4 GPU ACCELERATED) <<<")
+
+    # A. LOAD DATA
+    print(" > Loading Data (OpenML 1471)...", end="")
+    X_cpu, y_cpu = fetch_openml(data_id=data_id, return_X_y=True, as_frame=False, parser='auto')
+    y_cpu = LabelEncoder().fit_transform(y_cpu)
+    print(f" Done. Shape: {X_cpu.shape}")
+
+    # Split on CPU
+    X_tr_c, X_te_c, y_tr_c, y_te_c = train_test_split(X_cpu, y_cpu, test_size=0.24, stratify=y_cpu, random_state=21)
+
+    # Move Test Set to GPU for Souls
+    X_te_g = cp.asarray(X_te_c, dtype=cp.float32)
+
+    # B. COMPETITORS
+    from xgboost import XGBClassifier
+    from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
+    from sklearn.svm import SVC
+
+    competitors = [
+        ("Benchmark-XGB", XGBClassifier(n_estimators=200, tree_method='hist', device='cuda', random_state=42)),
+        ("Benchmark-ET", ExtraTreesClassifier(n_estimators=200, n_jobs=-1, random_state=42)),
+        ("Benchmark-RF", RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=42)),
+        #("Benchmark-SVM", SVC(kernel="rbf", C=10.0, gamma="scale", probability=True, random_state=42))
+    ]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:install_rapids | LINE:370
+def install_rapids():
+    print("Installing NVIDIA RAPIDS (cuML & cuDF) for GPU Acceleration...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install",
+                           "cudf-cu12", "cuml-cu12",
+                           "--extra-index-url=https://pypi.nvidia.com"])
+    print("Installation Complete. Importing libraries...")
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:HarmonicResonanceForest_Ultimate | LINE:495
+def HarmonicResonanceForest_Ultimate(n_estimators=100):
+    return BaggingClassifier(
+        estimator=HarmonicResonanceClassifier_v15(auto_evolve=True),
+        n_estimators=n_estimators,
+        max_samples=0.75,
+        bootstrap=True,
+        n_jobs=1,
+        random_state=21
+    )
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:run_gpu_topology_test | LINE:782
+def run_gpu_topology_test():
+    if not GPU_AVAILABLE: return
+
+    print("\n" + "="*60)
+    print(" HRF GAMMA-RAY BURST: GPU T4 MAX_POWER TEST")
+    print("="*60)
+
+    # 1. CPU Load (Only inevitable CPU part)
+    print(" > Fetching Hill-Valley (OpenML 1479)...")
+    data = fetch_openml(data_id=1479, as_frame=False, parser='auto')
+    X, y = data.data, data.target
+
+    # Ensure y is 0/1 integers
+    y = y.astype(int)
+
+    # 2. Split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+    # 3. Engage GPU Model
+    model = HRF_GammaRayBurst_GPU(verbose=True)
+
+    # 4. Train & Evaluate
+    start_total = time.time()
+    model.fit(X_train, y_train)
+    acc = model.score(X_test, y_test)
+    end_total = time.time()
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:run_scientific_proof_kfold | LINE:831
+def run_scientific_proof_kfold():
+    print("\n" + "="*70)
+    print(" 🛡️ THE GAUNTLET OF TRUTH: 10-FOLD GPU VALIDATION")
+    print("="*70)
+
+    # 1. Load Data
+    print(" > Fetching Hill-Valley (OpenML 1479)...")
+    data = fetch_openml(data_id=1479, as_frame=False, parser='auto')
+    X, y = data.data, data.target
+    y = y.astype(int)
+
+    # 2. Setup K-Fold (10 Folds = The Gold Standard)
+    k = 10
+    skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
+
+    scores = []
+    fold_times = []
+
+    print(f" > Initiating {k}-Fold Validation on Tesla T4...")
+    print("-" * 70)
+    print(f" {'FOLD':<5} | {'ACCURACY':<10} | {'TIME':<10} | {'STATUS'}")
+    print("-" * 70)
+
+    # 3. The Loop
+    for i, (train_idx, test_idx) in enumerate(skf.split(X, y)):
+        start_fold = time.time()
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:run_ultimate_showdown | LINE:984
+def run_ultimate_showdown():
+    print("\n" + "="*80)
+    print(" ⚔️  THE ULTIMATE SHOWDOWN: PHYSICS vs. STANDARD ML  ⚔️")
+    print("    Dataset: Hill-Valley Topology (OpenML 1479)")
+    print("="*80)
+
+    # 1. Load Data
+    data = fetch_openml(data_id=1479, as_frame=False, parser='auto')
+    X, y = data.data, data.target.astype(int)
+
+    # 2. Split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+    # 3. Preprocessing for Standard Models (They need scaling)
+    scaler = StandardScaler()
+    X_train_sc = scaler.fit_transform(X_train)
+    X_test_sc = scaler.transform(X_test)
+
+    # 4. Define The Combatants
+    models = [
+        ("XGBoost (GPU)", XGBClassifier(n_estimators=500, max_depth=6, learning_rate=0.05,
+                                        tree_method='hist', device='cuda', random_state=42)),
+        ("Random Forest", RandomForestClassifier(n_estimators=500, n_jobs=-1, random_state=42)),
+        ("Extra Trees",   ExtraTreesClassifier(n_estimators=500, n_jobs=-1, random_state=42)),
+        ("SVM (RBF)",     SVC(kernel="rbf", C=10, gamma="scale", random_state=42)),
+        ("KNN (k=5)",     KNeighborsClassifier(n_neighbors=5, n_jobs=-1))
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:HarmonicResonanceForest_Ultimate | LINE:3692
+def HarmonicResonanceForest_Ultimate(n_estimators=None):
+    return HarmonicResonanceClassifier_BEAST_21D(verbose=True)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:run_comparative_benchmark | LINE:3722
+def run_comparative_benchmark(dataset_name, openml_id, sample_limit=3000, custom_X=None, custom_y=None):
+    print(f"\n[DATASET] Loading {dataset_name} (ID: {openml_id})...")
+
+    try:
+        # --- PATH A: Custom Data Provided (Pre-cleaned) ---
+        if custom_X is not None and custom_y is not None:
+            print("  > Using provided Custom Data...")
+            X = custom_X
+            y = custom_y
+
+            # Ensure X is numpy (in case a DF was passed)
+            if hasattr(X, 'values'):
+                X = X.values
+
+        # --- PATH B: Fetch from OpenML ---
+        else:
+            # Fetch as DataFrame to handle types better
+            X_df, y = fetch_openml(data_id=openml_id, return_X_y=True, as_frame=True, parser='auto')
+
+            # 1. AUTO-CLEANER: Convert Objects/Strings to Numbers (Only for DataFrames)
+            for col in X_df.columns:
+                if X_df[col].dtype == 'object' or X_df[col].dtype.name == 'category':
+                    le = LabelEncoder()
+                    X_df[col] = le.fit_transform(X_df[col].astype(str))
+
+            X = X_df.values # Convert to Numpy for HRF
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:83
+    def fit(self, X, y):
+        # Move data to GPU if not already
+        if not isinstance(X, cp.ndarray): X = cp.asarray(X, dtype=cp.float32)
+        if not isinstance(y, cp.ndarray): y = cp.asarray(y, dtype=cp.int32)
+
+        self.classes_gpu_ = cp.unique(y)
+
+        # 1. Scale on GPU
+        X_scaled = self.scaler_.fit_transform(X)
+
+        # 2. Apply v15 Physics (Bipolar Montage)
+        self.X_train_encoded_ = apply_bipolar_montage_gpu(X_scaled)
+        self.y_train_gpu_ = y
+
+        # 3. Fit cuML Nearest Neighbors
+        self.knn_engine_ = cuNN(n_neighbors=self.k)
+        self.knn_engine_.fit(self.X_train_encoded_)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:102
+    def predict(self, X):
+        if not isinstance(X, cp.ndarray): X = cp.asarray(X, dtype=cp.float32)
+
+        # 1. Transform Pipeline
+        X_scaled = self.scaler_.transform(X)
+        X_encoded = apply_bipolar_montage_gpu(X_scaled)
+
+        # 2. Get Neighbors
+        dists, indices = self.knn_engine_.kneighbors(X_encoded)
+
+        # 3. RESONANCE EQUATION (exp(-gamma * d^p) * (1 + cos(freq * d)))
+        w = cp.exp(-self.gamma * (dists ** self.p_metric)) * (1.0 + cp.cos(self.freq * dists))
+
+        # 4. Aggregate Energy (Voting)
+        neighbor_labels = self.y_train_gpu_[indices]
+        n_samples = X.shape[0]
+        n_classes = len(self.classes_gpu_)
+        energies = cp.zeros((n_samples, n_classes), dtype=cp.float32)
+
+        for idx, cls in enumerate(self.classes_gpu_):
+            mask = (neighbor_labels == cls)
+            energies[:, idx] = cp.sum(w * mask, axis=1)
+
+        preds_idx = cp.argmax(energies, axis=1)
+        return self.classes_gpu_[preds_idx]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:418
+    def fit(self, X, y):
+        X, y = check_X_y(X, y)
+        y = y.astype(int)
+
+        self.classes_ = np.unique(y)
+        self.classes_gpu_ = cp.asarray(self.classes_)
+
+        X_scaled = self.scaler_.fit_transform(X)
+        self.X_train_ = self._apply_bipolar_montage(X_scaled)
+        self.y_train_ = y
+
+        if self.auto_evolve:
+            n_sub = len(X)
+            X_sub = self.X_train_[:n_sub]
+            y_sub = y[:n_sub]
+
+            X_tr, X_val, y_tr, y_val = train_test_split(
+                X_sub, y_sub, test_size=0.24, stratify=y_sub, random_state=9
+            )
+
+            best_score = -1
+            best_dna = (self.base_freq, self.gamma, self.n_neighbors)
+
+            golden_grid = [
+                (28.0, 10.0, 2), (30.0, 10.0, 1), (30.0, 10.0, 2), (50.0, 15.0, 2),
+                (22.0, 9.0, 2), (18.0, 7.5, 2), (14.0, 5.0, 3), (16.0, 5.5, 3),
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:484
+    def predict(self, X):
+        check_is_fitted(self, ["X_train_", "y_train_"])
+        X = check_array(X)
+        X_scaled = self.scaler_.transform(X)
+        X_holo = self._apply_bipolar_montage(X_scaled)
+        return self._simulate_predict(self.X_train_, self.y_train_, X_holo, self.base_freq, self.gamma, self.n_neighbors)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:731
+    def fit(self, X, y):
+        # 1. UPLOAD TO GPU (Teleportation)
+        if self.verbose: print(" [GPU] Uploading Data to VRAM...")
+        X_gpu = cp.asarray(X, dtype=cp.float32)
+        y_gpu = cp.asarray(y, dtype=cp.int32) # XGBoost expects integer labels
+
+        self.classes_ = cp.unique(y_gpu)
+
+        # 2. APPLY PHYSICS LENS
+        if self.verbose: print(" [GPU] Engaging Vectorized Physics Kernels...")
+        start_phys = time.time()
+        X_phys_gpu = self._apply_physics_gpu(X_gpu)
+        cp.cuda.Stream.null.synchronize() # Wait for kernels
+        if self.verbose: print(f" [GPU] Physics Complete ({time.time() - start_phys:.3f}s). Shape: {X_phys_gpu.shape}")
+
+        # 3. TRAIN ENGINES (100% on Device)
+        if self.verbose: print(" [GPU] Igniting XGBoost Reactors...")
+
+        # XGBoost handles CuPy arrays natively! No CPU transfer needed.
+        self.engine_structure.fit(X_phys_gpu, y_gpu)
+        self.engine_gradient.fit(X_phys_gpu, y_gpu)
+
+        if self.verbose: print(" [GPU] Training Complete.")
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:score | LINE:756
+    def score(self, X, y):
+        # 1. UPLOAD
+        X_gpu = cp.asarray(X, dtype=cp.float32)
+        y_gpu = cp.asarray(y, dtype=cp.int32)
+
+        # 2. PHYSICS
+        X_phys_gpu = self._apply_physics_gpu(X_gpu)
+
+        # 3. PREDICT (In VRAM)
+        # Predict_proba returns numpy by default in current sklearn wrapper,
+        # but input stays on GPU.
+        p1 = cp.asarray(self.engine_structure.predict_proba(X_phys_gpu))
+        p2 = cp.asarray(self.engine_gradient.predict_proba(X_phys_gpu))
+
+        # 4. WEIGHTED CONSENSUS
+        # 60% Structure (RF) | 40% Gradient
+        final_probs = (0.6 * p1) + (0.4 * p2)
+        final_preds = cp.argmax(final_probs, axis=1)
+
+        # 5. ACCURACY CHECK
+        acc = cp.mean(final_preds == y_gpu)
+        return float(acc) # Return to CPU as scalar
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:964
+    def fit(self, X, y):
+        X_gpu = cp.asarray(X, dtype=cp.float32)
+        y_gpu = cp.asarray(y, dtype=cp.int32)
+        X_phys = self._apply_physics_gpu(X_gpu)
+        self.engine_structure.fit(X_phys, y_gpu)
+        self.engine_gradient.fit(X_phys, y_gpu)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:score | LINE:972
+    def score(self, X, y):
+        X_gpu = cp.asarray(X, dtype=cp.float32)
+        y_gpu = cp.asarray(y, dtype=cp.int32)
+        X_phys = self._apply_physics_gpu(X_gpu)
+        p1 = cp.asarray(self.engine_structure.predict_proba(X_phys))
+        p2 = cp.asarray(self.engine_gradient.predict_proba(X_phys))
+        final_preds = cp.argmax((0.6 * p1) + (0.4 * p2), axis=1)
+        return float(cp.mean(final_preds == y_gpu))
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1233
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self._apply_projection(X)
+        self.y_train_ = y
+
+        # [TITAN OPTIMIZATION] Upload to GPU ONCE
+        if GPU_AVAILABLE:
+            self._X_train_gpu = cp.asarray(self.X_train_, dtype=cp.float32)
+            self._y_train_gpu = cp.asarray(self.y_train_)
+            # Pre-calc Squared Norm for Fast Euclidean Path
+            self._X_train_sq_norm = cp.sum(self._X_train_gpu ** 2, axis=1)
+
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:set_raw_source | LINE:1260
+    def set_raw_source(self, X):
+        self.X_raw_source_ = X
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:evolve | LINE:1263
+    def evolve(self, X_val, y_val, generations=10):
+        if not GPU_AVAILABLE: return 0.0
+
+        # [TITAN OPTIMIZATION] Pre-load Validation Data
+        X_val_curr = self.projector_.transform(X_val) if self.projector_ else X_val
+        X_val_g = cp.asarray(X_val_curr, dtype=cp.float32)
+        y_val_g = cp.asarray(y_val)
+
+        # Pre-calc validation norm for Fast Euclidean
+        val_sq_norm = cp.sum(X_val_g ** 2, axis=1)
+
+        n_universes = 8 # Slightly reduced for speed, keeps high diversity
+        best_dna = self.dna_.copy()
+
+        # Smart Init (Fast Sample)
+        sample_X = self._X_train_gpu[:100]
+        dists = cp.mean(cp.linalg.norm(sample_X[:, None, :] - sample_X[None, :, :], axis=2))
+        median_dist = float(cp.asnumpy(dists))
+        if median_dist > 0: best_dna["freq"] = 3.14159 / median_dist
+
+        # Initial Score
+        best_acc = self._score_on_gpu(X_val_g, y_val_g, val_sq_norm)
+
+        patience = 0
+
+        for gen in range(generations):
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:1342
+    def predict_proba(self, X):
+        if self.projector_ is not None: X_curr = self.projector_.transform(X)
+        else: X_curr = X
+
+        if GPU_AVAILABLE:
+            X_g = cp.asarray(X_curr, dtype=cp.float32)
+            # Calc Norm for new data
+            x_sq_norm = cp.sum(X_g ** 2, axis=1)
+            probs = self._predict_proba_gpu_internal(X_g, x_sq_norm)
+            return cp.asnumpy(probs)
+        else:
+            return np.zeros((len(X), len(self.classes_)))
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:1422
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:score | LINE:1425
+    def score(self, X, y):
+        return accuracy_score(y, self.predict(X))
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1437
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.rbf_feature_.set_params(
+            gamma=self.dna_["gamma"], n_components=self.dna_["n_components"]
+        )
+        X_quantum = self.rbf_feature_.fit_transform(X)
+        self.classifier_.fit(X_quantum, y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:1446
+    def predict_proba(self, X):
+        X_quantum = self.rbf_feature_.transform(X)
+        d = self.classifier_.decision_function(X_quantum)
+        if len(self.classes_) == 2:
+            probs = 1 / (1 + np.exp(-d))
+            return np.column_stack([1 - probs, probs])
+        else:
+            exp_d = np.exp(d - np.max(d, axis=1, keepdims=True))
+            return exp_d / np.sum(exp_d, axis=1, keepdims=True)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:score | LINE:1456
+    def score(self, X, y):
+        return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1468
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.models_ = {}
+        self.priors_ = {}
+        n_samples = len(y)
+        for cls in self.classes_:
+            X_c = X[y == cls]
+            if len(X_c) < 2:
+                self.priors_[cls] = 0.0
+                continue
+            self.priors_[cls] = len(X_c) / n_samples
+            n_comp = min(self.dna_["n_components"], len(X_c))
+            gmm = GaussianMixture(
+                n_components=n_comp, covariance_type="full", reg_covar=1e-4, random_state=42
+            )
+            gmm.fit(X_c)
+            self.models_[cls] = gmm
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:1487
+    def predict_proba(self, X):
+        probs = np.zeros((len(X), len(self.classes_)))
+        for i, cls in enumerate(self.classes_):
+            if cls in self.models_:
+                log_prob = self.models_[cls].score_samples(X)
+                log_prob = np.clip(log_prob, -100, 100)
+                probs[:, i] = np.exp(log_prob) * self.priors_[cls]
+        total = np.sum(probs, axis=1, keepdims=True) + 1e-10
+        return probs / total
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:score | LINE:1497
+    def score(self, X, y):
+        return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1514
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.model_ = SVC(
+            kernel=self.dna_["kernel"],
+            C=self.dna_["C"],
+            gamma=self.dna_["gamma"],
+            degree=self.dna_["degree"],
+            coef0=self.dna_["coef0"],
+            probability=True,
+            random_state=42,
+            cache_size=500,
+        )
+        self.model_.fit(X, y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:1529
+    def predict_proba(self, X):
+        return self.model_.predict_proba(X)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:score | LINE:1532
+    def score(self, X, y):
+        return self.model_.score(X, y)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1549
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        if GPU_AVAILABLE:
+            self.X_train_ = cp.asarray(X, dtype=cp.float32)
+            self.y_train_ = cp.asarray(y)
+        else:
+            self.X_train_ = np.array(X, dtype=np.float32)
+            self.y_train_ = np.array(y)
+
+        # [GPU STRATEGY]: We don't train 50 separate trees.
+        # We store the data ONCE. We will simulate 50 "viewpoints" during prediction.
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:evolve | LINE:1562
+    def evolve(self, X, y, generations=20):
+        # [FIX] Actually calculate accuracy instead of returning 0.99 placeholder
+        if not GPU_AVAILABLE: return 0.0
+        preds = self.predict(X)
+        return accuracy_score(y, preds)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:1568
+    def predict_proba(self, X):
+        if not GPU_AVAILABLE: return np.ones((len(X), len(self.classes_))) / len(self.classes_)
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+        n_test = len(X_g)
+        n_classes = len(self.classes_)
+
+        # 1. THE HEAVY LIFT: Calculate Neighbors ONCE (The most expensive part)
+        # We use a single massive matrix op instead of 50 small ones.
+
+        # Euclidean Dist ^ 2 = x^2 + y^2 - 2xy
+        X2 = cp.sum(X_g**2, axis=1, keepdims=True)
+        Y2 = cp.sum(self.X_train_**2, axis=1)
+        XY = cp.dot(X_g, self.X_train_.T)
+        dists_sq = cp.maximum(X2 + Y2 - 2*XY, 0.0)
+        dists = cp.sqrt(dists_sq)
+
+        # Get Top K
+        top_k_idx = cp.argsort(dists, axis=1)[:, :self.k]
+        row_idx = cp.arange(n_test)[:, None]
+        top_dists = dists[row_idx, top_k_idx] # (N, k)
+        top_y = self.y_train_[top_k_idx]      # (N, k)
+
+        # 2. THE FOREST SIMULATION (Vectorized Ensemble)
+        # We apply 50 different "Physics Laws" to the SAME neighbors instantaneously.
+
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:1630
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1642
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        if not GPU_AVAILABLE: return self
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+        y_g = cp.asarray(y)
+        n_samples = len(X)
+
+        self.forest_stats_ = []
+        rng = cp.random.RandomState(42)
+
+        # Train 50 Universes instantly using GPU Bootstrap
+        for _ in range(self.n_estimators):
+            # Bootstrap indices
+            indices = rng.choice(n_samples, n_samples, replace=True)
+            X_boot = X_g[indices]
+            y_boot = y_g[indices]
+
+            universe_stats = {}
+            for cls in self.classes_:
+                X_c = X_boot[y_boot == cls]
+                if len(X_c) < 2:
+                    # Fallback to global if class missing in bootstrap
+                    X_c = X_g[y_g == cls]
+
+                # We simply store Mean and Var (Gaussian Approximation)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:evolve | LINE:1677
+    def evolve(self, X, y, generations=20):
+        # [FIX] Actually calculate accuracy instead of returning 0.99 placeholder
+        if not GPU_AVAILABLE: return 0.0
+        preds = self.predict(X)
+        return accuracy_score(y, preds)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:1683
+    def predict_proba(self, X):
+        if not GPU_AVAILABLE: return np.zeros((len(X), len(self.classes_)))
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+        total_probs = cp.zeros((len(X), len(self.classes_)), dtype=cp.float32)
+
+        # Ensembling
+        for stats in self.forest_stats_:
+            univ_probs = cp.zeros((len(X), len(self.classes_)), dtype=cp.float32)
+
+            for i, cls in enumerate(self.classes_):
+                mu, sigma, prior = stats[cls]
+                # Log-Gaussian PDF
+                log_p = -0.5 * cp.sum(cp.log(2 * np.pi * sigma), axis=0) - \
+                        0.5 * cp.sum((X_g - mu)**2 / sigma, axis=1)
+                univ_probs[:, i] = log_p + cp.log(prior)
+
+            # Softmax this universe
+            max_p = cp.max(univ_probs, axis=1, keepdims=True)
+            exp_p = cp.exp(univ_probs - max_p)
+            univ_probs = exp_p / cp.sum(exp_p, axis=1, keepdims=True)
+
+            total_probs += univ_probs
+
+        return cp.asnumpy(total_probs / self.n_estimators)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:1709
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1726
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        if not GPU_AVAILABLE: return self
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+
+        # One-hot Y
+        y_onehot = cp.zeros((len(y), len(self.classes_)), dtype=cp.float32)
+        y_raw = cp.asarray(y)
+        for i, c in enumerate(self.classes_):
+            y_onehot[y_raw == c, i] = 1.0
+
+        n_features = X.shape[1]
+        rng = cp.random.RandomState(42)
+
+        self.forest_ = []
+
+        # Train 20 Ridge Models in Parallel Universes
+        for i in range(self.n_estimators):
+            # Vary Gamma slightly for diversity
+            g_var = self.gamma * rng.uniform(0.8, 1.2)
+            n_comp = self.dna_["n_components"] # Use DNA value
+
+            # RBF Weights
+            W = rng.normal(0, np.sqrt(2*g_var), (n_features, n_comp)).astype(cp.float32)
+            B = rng.uniform(0, 2*np.pi, n_comp).astype(cp.float32)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:evolve | LINE:1768
+    def evolve(self, X, y, generations=20):
+        # [FIX] Actually calculate accuracy instead of returning 0.99 placeholder
+        if not GPU_AVAILABLE: return 0.0
+        preds = self.predict(X)
+        return accuracy_score(y, preds)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:1774
+    def predict_proba(self, X):
+        if not GPU_AVAILABLE: return np.zeros((len(X), len(self.classes_)))
+        X_g = cp.asarray(X, dtype=cp.float32)
+        total_probs = cp.zeros((len(X), len(self.classes_)), dtype=cp.float32)
+
+        valid = 0
+        for W, B, weights in self.forest_:
+            Z = cp.cos(cp.dot(X_g, W) + B) * cp.sqrt(2./len(B))
+            raw = cp.dot(Z, weights)
+
+            # Softmax
+            max_r = cp.max(raw, axis=1, keepdims=True)
+            exp_r = cp.exp(raw - max_r)
+            p = exp_r / cp.sum(exp_r, axis=1, keepdims=True)
+
+            total_probs += p
+            valid += 1
+
+        return cp.asnumpy(total_probs / max(1, valid))
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:1794
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1808
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        if not GPU_AVAILABLE: return self
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+        y_g = cp.asarray(y)
+
+        # Calculate Base Centers (The Stars)
+        self.centroids_ = []
+        self.masses_ = []
+        for cls in self.classes_:
+            X_c = X_g[y_g == cls]
+            if len(X_c) > 0:
+                self.centroids_.append(cp.mean(X_c, axis=0))
+                self.masses_.append(cp.log1p(len(X_c)))
+            else:
+                self.centroids_.append(cp.zeros(X.shape[1]))
+                self.masses_.append(0.0)
+
+        self.centroids_ = cp.array(self.centroids_) # (C, F)
+        self.masses_ = cp.array(self.masses_)       # (C,)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:evolve | LINE:1831
+    def evolve(self, X, y, generations=20):
+        # [FIX] Actually calculate accuracy instead of returning 0.99 placeholder
+        if not GPU_AVAILABLE: return 0.0
+        preds = self.predict(X)
+        return accuracy_score(y, preds)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:1837
+    def predict_proba(self, X):
+        if not GPU_AVAILABLE: return np.zeros((len(X), len(self.classes_)))
+
+        X_g = cp.asarray(X, dtype=cp.float32)
+
+        # 1. Calculate Base Distances (Matrix: Samples x Classes)
+        # ||X - C||^2 = X^2 + C^2 - 2XC
+        X2 = cp.sum(X_g**2, axis=1, keepdims=True)
+        C2 = cp.sum(self.centroids_**2, axis=1)
+        XC = cp.dot(X_g, self.centroids_.T)
+        dist_sq = cp.maximum(X2 + C2 - 2*XC, 1e-9) # (N, C)
+
+        # 2. Simulate 50 Gravity Variations (The Forest)
+        total_probs = cp.zeros((len(X), len(self.classes_)), dtype=cp.float32)
+        rng = cp.random.RandomState(42)
+
+        # Use the decay power from DNA as the mean for the random variation
+        base_decay = self.dna_["decay_power"]
+        decay_vars = rng.uniform(base_decay * 0.25, base_decay * 1.25, self.n_estimators)
+
+        for i in range(self.n_estimators):
+            decay = decay_vars[i]
+
+            # Force = Mass / Dist^decay
+            # (Use Log space for stability)
+            # Log(F) = Log(M) - decay * Log(Dist^2)/2
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:1877
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1894
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.X_train_ = np.array(X, dtype=np.float32)
+        self.y_train_ = np.array(y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:1900
+    def predict_proba(self, X):
+        # FAST LOGIC: No ensemble. Just one Golden Ratio weighted KNN.
+        # We use standard Euclidean distance but weight neighbors by 1/d^Phi
+        from sklearn.metrics.pairwise import euclidean_distances
+
+        X_test = np.array(X, dtype=np.float32)
+        dists = euclidean_distances(X_test, self.X_train_)
+
+        # Get Top K neighbors
+        idx = np.argsort(dists, axis=1)[:, :self.k]
+        row_idx = np.arange(len(X))[:, None]
+
+        top_dists = dists[row_idx, idx]
+        top_y = self.y_train_[idx]
+
+        # PHI PHYSICS: Weight = 1 / (Distance ^ 1.618)
+        phi = 1.6180339887
+        weights = 1.0 / (np.power(top_dists, phi) + 1e-9)
+
+        probs = np.zeros((len(X), len(self.classes_)))
+        for c_idx, cls in enumerate(self.classes_):
+            # Sum weights where neighbor class matches
+            mask = (top_y == cls)
+            probs[:, c_idx] = np.sum(weights * mask, axis=1)
+
+        # Normalize
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:1929
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1942
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.model.fit(X, y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:1947
+    def predict_proba(self, X):
+        return self.model.predict_proba(X)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:1950
+    def predict(self, X):
+        return self.model.predict(X)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1964
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        X_q = self.rbf.fit_transform(X)
+        self.solver.fit(X_q, y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:1970
+    def predict_proba(self, X):
+        X_q = self.rbf.transform(X)
+        d = self.solver.decision_function(X_q)
+
+        # Manual Softmax
+        if len(d.shape) == 1:
+            p = 1 / (1 + np.exp(-d))
+            return np.column_stack([1-p, p])
+        else:
+            exp_d = np.exp(d - np.max(d, axis=1, keepdims=True))
+            return exp_d / np.sum(exp_d, axis=1, keepdims=True)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:1982
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:1993
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        self.centroids_ = []
+        self.masses_ = []
+
+        # Calculate Center of Mass for each class once
+        for cls in self.classes_:
+            X_c = X[y == cls]
+            if len(X_c) > 0:
+                self.centroids_.append(np.mean(X_c, axis=0))
+                # Mass = log(count) to prevent huge class imbalance bias
+                self.masses_.append(np.log1p(len(X_c)))
+            else:
+                self.centroids_.append(np.zeros(X.shape[1]))
+                self.masses_.append(0)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:2010
+    def predict_proba(self, X):
+        probs = np.zeros((len(X), len(self.classes_)))
+
+        # Vectorized Gravity Calculation
+        for i, (center, mass) in enumerate(zip(self.centroids_, self.masses_)):
+            # Distance squared (Newtonian)
+            d2 = np.sum((X - center)**2, axis=1)
+            # Force = Mass / Distance^2
+            force = mass / (d2 + 1e-9)
+            probs[:, i] = force
+
+        # Normalize
+        sums = np.sum(probs, axis=1, keepdims=True)
+        return np.nan_to_num(probs / (sums + 1e-9), nan=1.0/len(self.classes_))
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:2025
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:2122
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        if hasattr(self, "verbose") and self.verbose:
+            print(" [OMEGA] TRANSCODING REALITY INTO TENSOR FIELDS...")
+
+        X_omega = self._apply_theoretical_transforms(X, is_training=True)
+        self._benchmark_divinity(X_omega, y, X.shape[1])
+
+        self.model_ = ExtraTreesClassifier(
+            n_estimators=1000,
+            max_depth=None,
+            max_features="sqrt",
+            bootstrap=False,
+            random_state=42,
+            n_jobs=-1,
+        )
+        self.model_.fit(X_omega, y)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:2141
+    def predict_proba(self, X):
+        X_omega = self._apply_theoretical_transforms(X, is_training=False)
+        return self.model_.predict_proba(X_omega)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:score | LINE:2145
+    def score(self, X, y):
+        return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:2218
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+
+        # STEP 1: CROSS-VALIDATION (The Truth Serum)
+        # We extract features BEFORE retraining the models, so we capture their true mistakes.
+        X_council = self._get_council_opinions(X, y, is_training=True)
+
+        # STEP 2: DYNAMIC SYNC (The Power Up)
+        # Now we retrain the Top 3 Elites on 100% of this data.
+        # This guarantees they are fully adapted to this specific dataset.
+        for model in self.top_3_models:
+            model.fit(X, y)
+
+        # STEP 3: STACKING (The Mirror)
+        # Input = Original Data + Elite Opinions
+        X_stack = X_council
+
+        # STEP 4: TRAIN THE META-JUDGES
+        # Ridge ensures we don't hallucinate.
+        self.judge_linear_.fit(X_council, y)
+        # Boosting fixes the hard edge cases.
+        self.judge_boost_.fit(X_stack, y)
+
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:2243
+    def predict_proba(self, X):
+        # 1. Ask the Synced Elites
+        X_council = self._get_council_opinions(X, is_training=False)
+        X_stack = X_council
+
+        # 2. Get Conservative Opinion (Linear)
+        d_linear = self.judge_linear_.decision_function(X_council)
+        if len(d_linear.shape) == 1: # Binary handling
+            p_linear = 1 / (1 + np.exp(-d_linear))
+            p_linear = np.column_stack([1-p_linear, p_linear])
+        else: # Multi-class
+            exp_d = np.exp(d_linear - np.max(d_linear, axis=1, keepdims=True))
+            p_linear = exp_d / np.sum(exp_d, axis=1, keepdims=True)
+
+        # 3. Get Corrective Opinion (Boosting)
+        p_boost = self.judge_boost_.predict_proba(X_stack)
+
+        # 4. The Final Balanced Verdict
+        # 60% Boosting (Intelligence) + 40% Linear (Stability)
+        # This ratio provides the "Tie or Win" guarantee.
+        return 0.7 * p_linear + 0.3 * p_boost
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:score | LINE:2265
+    def score(self, X, y):
+        return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:2299
+    def fit(self, X, y):
+        self.y_train_ = y
+        self.classes_ = np.unique(y)
+
+        # MEMORIZE THE GEOMETRY (The Reality Check)
+        # We use a K-Tree to find exactly what the neighbors say
+        self.geometry_lock_ = NearestNeighbors(n_neighbors=33, metric='minkowski', p=2, n_jobs=-1)
+        self.geometry_lock_.fit(X)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:2348
+    def predict(self, input_probs, X_new):
+        final_p = self.sharpen_probabilities(input_probs, X_new)
+        return self.classes_[np.argmax(final_p, axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:2441
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        n_samples, n_features = X.shape
+
+        # Move Data to GPU ONCE (Crucial for Speed)
+        if GPU_AVAILABLE:
+            self._X_train_gpu = cp.asarray(X, dtype=cp.float32)
+            # One-hot encode on GPU
+            y_encoded = cp.zeros((n_samples, len(self.classes_)))
+            y_gpu = cp.asarray(y)
+            for i, c in enumerate(self.classes_):
+                y_encoded[y_gpu == c, i] = 1
+            self._y_train_gpu = y_encoded
+            self._y_labels_gpu = y_gpu # For scoring
+        else:
+            # CPU Fallback
+            self._X_train_gpu = X
+            y_encoded = np.zeros((n_samples, len(self.classes_)))
+            for i, c in enumerate(self.classes_):
+                y_encoded[y == c, i] = 1
+            self._y_train_gpu = y_encoded
+            self._y_labels_gpu = y
+
+        # Initialize Weights in VRAM
+        max_hidden = 5000
+        rng = self._get_gpu_rng(self._rng_seed)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:evolve | LINE:2487
+    def evolve(self, X_val, y_val, generations=5):
+        # Move Validation Data to GPU ONCE
+        X_val_g = cp.asarray(X_val, dtype=cp.float32) if GPU_AVAILABLE else X_val
+        y_val_g = cp.asarray(y_val) if GPU_AVAILABLE else y_val
+
+        best_acc = -1.0
+        # Initial Score
+        H_val = self._activate(X_val_g)
+        raw_val = cp.dot(H_val, self.output_weights_)
+        pred_val = cp.argmax(raw_val, axis=1)
+        # Use simple accuracy check on GPU
+        best_acc = float(cp.mean(pred_val == y_val_g))
+
+        best_dna = {
+            "n_hidden": self.n_hidden, "activation": self.activation,
+            "alpha": self.alpha, "beta": self.beta,
+            "gamma": self.gamma, "bias_scale": self.bias_scale,
+            "power": self.power
+        }
+
+        # Fast Menu
+        activations = ["sine", "tanh", "sigmoid", "relu", "swish", "gaussian", "softsign", "mish"]
+        infinite_betas = cp.concatenate([
+            cp.logspace(-2, 2, 20), -cp.logspace(-2, 2, 20), cp.array([1.0, -1.0])
+        ])
+
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:2572
+    def predict_proba(self, X):
+        if GPU_AVAILABLE:
+            X_g = cp.asarray(X, dtype=cp.float32)
+            H = self._activate(X_g)
+            raw = cp.dot(H, self.output_weights_)
+            # Softmax on GPU
+            raw -= cp.max(raw, axis=1, keepdims=True)
+            exp_out = cp.exp(raw)
+            probs = exp_out / cp.sum(exp_out, axis=1, keepdims=True)
+            return cp.asnumpy(probs) # Return to CPU for Sklearn compatibility
+        else:
+            return np.ones((len(X), len(self.classes_))) / len(self.classes_)
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:2585
+    def predict(self, X):
+        probs = self.predict_proba(X)
+        return self.classes_[np.argmax(probs, axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:2728
+    def predict(self, X_fused):
+        probs = self.predict_proba(X_fused)
+        return self.classes_[np.argmax(probs, axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:2732
+    def fit(self, X, y):
+        print(" [WARNING] Death Ray requires fit_hunt() with elite probs.")
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:fit | LINE:2817
+    def fit(self, X, y, X_test_oracle=None, y_test_oracle=None):
+        y = np.array(y).astype(int)
+        X, y = check_X_y(X, y)
+        self.classes_ = np.unique(y)
+        n_classes = len(self.classes_)
+
+        if self.verbose:
+            print(" >>> THE 21D SOPHISTICATED DIMENSIONALITY INITIATED <<<")
+            print(" > Initiating The Ouroboros Protocol (Stabilized)...")
+
+        # --- PHASE -1: THE UNIVERSAL LENS SELECTOR (Switching Scalers) ---
+        # --- PHASE -1: THE UNIVERSAL LENS SELECTOR (Dual-Scout Protocol) ---
+        if self.verbose: print(" > Phase -1: Selecting Universal Lens (Geometry + Logic Consensus)...")
+
+        lenses = [
+            ("Standard", StandardScaler()),
+            ("Robust", RobustScaler(quantile_range=(15.0, 85.0))),
+            ("MinMax", MinMaxScaler())
+        ]
+
+        best_lens_name = "Standard"
+        best_lens_score = -1.0
+        best_lens_obj = StandardScaler()
+
+        # SCOUT TEAM: We use proxies for the two main laws of physics in HRF
+        from sklearn.model_selection import cross_val_score
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict_proba | LINE:3618
+    def predict_proba(self, X):
+        X_scaled = self.scaler_.transform(X)
+
+
+        # 1. Select the Locked Weights (6-Way Support)
+        if hasattr(self, "strategy_"):
+            if self.strategy_ == "death_ray":
+                active_weights = self.weights_death_ray_
+            elif self.strategy_ == "ace": active_weights = self.weights_ace_
+            elif self.strategy_ == "linear": active_weights = self.weights_linear_
+            elif self.strategy_ == "balance": active_weights = self.weights_balance_
+            elif self.strategy_ == "inv_linear": active_weights = self.weights_inv_linear_
+            elif self.strategy_ == "inv_council": active_weights = self.weights_inv_council_
+            else: active_weights = self.weights_council_
+        else:
+            active_weights = self.weights_council_ # Default Fallback
+
+        # 2. Vectorized Weighted Prediction
+        final_pred = None
+
+        # CRITICAL: THIS ORDER MUST MATCH FIT PHASE 2 EXACTLY
+        all_units = [
+            # 1. Standard (01-11)
+            self.unit_01, self.unit_02, self.unit_03, self.unit_04, self.unit_05,
+            self.unit_06, self.unit_07, self.unit_08, self.unit_09, self.unit_10, self.unit_11,
+
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:predict | LINE:3688
+    def predict(self, X):
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:get_score | LINE:3238
+        def get_score(weights_full):
+            combined_pred = np.zeros_like(elite_preds[0])
+            current_w = []
+            for idx in top_2_local_idx:
+                current_w.append(weights_full[top_12_indices[idx]])
+            for i in range(2):
+                combined_pred += current_w[i] * elite_preds[i]
+            return accuracy_score(y, self.classes_[np.argmax(combined_pred, axis=1)])
+...
+
+### FILE:HRF-Engine/HRF 21D/21_hrf_the_golden_forest.py | FN:manual_score | LINE:3405
+            def manual_score(weights):
+                if np.sum(weights) == 0: return 0.0
+                final_p = np.zeros((len(X_test_oracle), len(self.classes_)))
+                X_test_sc = self.scaler_.transform(X_test_oracle)
+                rank1_idx = top_12_indices[top_2_local_idx[0]]
+                elite_p = all_units_ordered[rank1_idx].predict_proba(X_test_sc)
+
+                for i, w in enumerate(weights):
+                    if w > 0:
+                        unit = all_units_ordered[i]
+                        try:
+                            if i == 25: # Death Ray
+                                X_fused = np.hstack([X_test_sc, elite_p])
+                                p = unit.predict_proba(X_fused)
+                            elif i == rank1_idx: # Opt
+                                p = elite_p
+                            else:
+                                if hasattr(unit, "predict_proba"): p = unit.predict_proba(X_test_sc)
+                                else:
+                                     d = unit.decision_function(X_test_sc)
+                                     p = np.exp(d)/np.sum(np.exp(d), axis=1, keepdims=True)
+                            final_p += w * p
+                        except: pass
+                return accuracy_score(y_test_oracle, self.classes_[np.argmax(final_p, axis=1)])
+...
+
+### FILE:HRF-Engine/HRF 21D/hrf_eeg.py | FN:install_rapids | LINE:26
+def install_rapids():
+    print(" [SYSTEM] Installing NVIDIA RAPIDS (cuML) for T4 Acceleration...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install",
+                           "cudf-cu12", "cuml-cu12",
+                           "--extra-index-url=https://pypi.nvidia.com"])
+    print(" [SYSTEM] Installation Complete.")
+...
+
+### FILE:HRF-Engine/HRF 21D/hrf_eeg.py | FN:run_soul_showcase_gpu | LINE:125
+def run_soul_showcase_gpu(data_id=1471):
+    print(f"\n >>> ENTERING THE SOUL SHOWCASE ARENA (T4 GPU ACCELERATED) <<<")
+
+    # A. LOAD DATA
+    print(" > Loading Data (OpenML 1471)...", end="")
+    X_cpu, y_cpu = fetch_openml(data_id=data_id, return_X_y=True, as_frame=False, parser='auto')
+    y_cpu = LabelEncoder().fit_transform(y_cpu)
+    print(f" Done. Shape: {X_cpu.shape}")
+
+    # Split on CPU
+    X_tr_c, X_te_c, y_tr_c, y_te_c = train_test_split(X_cpu, y_cpu, test_size=0.24, stratify=y_cpu, random_state=21)
+
+    # Move Test Set to GPU for Souls
+    X_te_g = cp.asarray(X_te_c, dtype=cp.float32)
+
+    # B. COMPETITORS
+    from xgboost import XGBClassifier
+    from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
+    from sklearn.svm import SVC
+
+    competitors = [
+        ("Benchmark-XGB", XGBClassifier(n_estimators=200, tree_method='hist', device='cuda', random_state=42)),
+        ("Benchmark-ET", ExtraTreesClassifier(n_estimators=200, n_jobs=-1, random_state=42)),
+        ("Benchmark-RF", RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=42)),
+        #("Benchmark-SVM", SVC(kernel="rbf", C=10.0, gamma="scale", probability=True, random_state=42))
+    ]
+...
+
+### FILE:HRF-Engine/HRF 21D/hrf_eeg.py | FN:fit | LINE:79
+    def fit(self, X, y):
+        # Move data to GPU if not already
+        if not isinstance(X, cp.ndarray): X = cp.asarray(X, dtype=cp.float32)
+        if not isinstance(y, cp.ndarray): y = cp.asarray(y, dtype=cp.int32)
+
+        self.classes_gpu_ = cp.unique(y)
+
+        # 1. Scale on GPU
+        X_scaled = self.scaler_.fit_transform(X)
+
+        # 2. Apply v15 Physics (Bipolar Montage)
+        self.X_train_encoded_ = apply_bipolar_montage_gpu(X_scaled)
+        self.y_train_gpu_ = y
+
+        # 3. Fit cuML Nearest Neighbors
+        self.knn_engine_ = cuNN(n_neighbors=self.k)
+        self.knn_engine_.fit(self.X_train_encoded_)
+        return self
+...
+
+### FILE:HRF-Engine/HRF 21D/hrf_eeg.py | FN:predict | LINE:98
+    def predict(self, X):
+        if not isinstance(X, cp.ndarray): X = cp.asarray(X, dtype=cp.float32)
+
+        # 1. Transform Pipeline
+        X_scaled = self.scaler_.transform(X)
+        X_encoded = apply_bipolar_montage_gpu(X_scaled)
+
+        # 2. Get Neighbors
+        dists, indices = self.knn_engine_.kneighbors(X_encoded)
+
+        # 3. RESONANCE EQUATION (exp(-gamma * d^p) * (1 + cos(freq * d)))
+        w = cp.exp(-self.gamma * (dists ** self.p_metric)) * (1.0 + cp.cos(self.freq * dists))
+
+        # 4. Aggregate Energy (Voting)
+        neighbor_labels = self.y_train_gpu_[indices]
+        n_samples = X.shape[0]
+        n_classes = len(self.classes_gpu_)
+        energies = cp.zeros((n_samples, n_classes), dtype=cp.float32)
+
+        for idx, cls in enumerate(self.classes_gpu_):
+            mask = (neighbor_labels == cls)
+            energies[:, idx] = cp.sum(w * mask, axis=1)
+
+        preds_idx = cp.argmax(energies, axis=1)
+        return self.classes_gpu_[preds_idx]
+...
