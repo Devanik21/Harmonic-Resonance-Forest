@@ -157,7 +157,7 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         n_test = len(X_te_g)
         n_classes = len(self.classes_)
         probas = []
-        batch_size = 256
+        batch_size = 1024
 
         p_norm = self.dna_.get('p', 2.0)
         gamma = self.dna_['gamma']
@@ -306,7 +306,7 @@ class OmniKernelUnit(BaseEstimator, ClassifierMixin):
             gamma=self.dna_['gamma'],
             degree=self.dna_['degree'],
             coef0=self.dna_['coef0'],
-            probability=True,
+            probability=False,
             random_state=42,
             cache_size=500
         )
@@ -364,33 +364,33 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         # --- THE 14 BEASTS (Maximum Fidelity) ---
 
         # 1. LOGIC ALPHA (The Overlord - ExtraTrees)
-        self.unit_01 = ExtraTreesClassifier(n_estimators=1000, bootstrap=False,
+        self.unit_01 = ExtraTreesClassifier(n_estimators=100, bootstrap=False,
                                             max_features='sqrt', n_jobs=-1, random_state=42)
 
         # 2. LOGIC BETA (The Tactician - RandomForest)
-        self.unit_02 = RandomForestClassifier(n_estimators=1000, criterion='gini',
+        self.unit_02 = RandomForestClassifier(n_estimators=100, criterion='gini',
                                               n_jobs=-1, random_state=42)
 
         # 3. LOGIC GAMMA (The Swarm - HistGradient)
-        self.unit_03 = HistGradientBoostingClassifier(max_iter=500, learning_rate=0.05,
+        self.unit_03 = HistGradientBoostingClassifier(max_iter=100, learning_rate=0.05,
                                                       early_stopping=False, random_state=42)
 
         # 4. GRADIENT ALPHA (The Sniper - XGBoost Deep)
-        self.unit_04 = XGBClassifier(n_estimators=500, max_depth=6, learning_rate=0.02,
+        self.unit_04 = XGBClassifier(n_estimators=100, max_depth=6, learning_rate=0.02,
                                      subsample=0.8, colsample_bytree=0.8,
                                      use_label_encoder=False, eval_metric='logloss',
                                      tree_method='hist', n_jobs=-1, random_state=42)
 
         # 5. GRADIENT BETA (The Nuke - XGBoost Fast)
-        self.unit_05 = XGBClassifier(n_estimators=1000, max_depth=3, learning_rate=0.1,
+        self.unit_05 = XGBClassifier(n_estimators=100, max_depth=3, learning_rate=0.1,
                                      use_label_encoder=False, eval_metric='logloss',
                                      tree_method='hist', n_jobs=-1, random_state=42)
 
         # 6. KERNEL ALPHA (The Warp - NuSVC)
-        self.unit_06 = NuSVC(nu=0.05, kernel='rbf', gamma='scale', probability=True, random_state=42)
+        self.unit_06 = NuSVC(nu=0.05, kernel='rbf', gamma='scale', probability=False, random_state=42)
 
         # 7. KERNEL BETA (The Manifold - Poly SVC)
-        self.unit_07 = SVC(kernel='poly', degree=2, C=10.0, probability=True, random_state=42)
+        self.unit_07 = SVC(kernel='poly', degree=2, C=10.0, probability=False, random_state=42)
 
         # 8. GEOMETRY ALPHA (The Cluster - Euclidean)
         self.unit_08 = KNeighborsClassifier(n_neighbors=3, weights='distance', metric='euclidean', n_jobs=-1)
@@ -459,7 +459,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
 
             # We pass the validation set so it knows if its mutations are working
             # Increasing generations ensures they find a global optimum
-            best_acc = soul.evolve(X_evo_v, y_evo_v, generations=50)
+            best_acc = soul.evolve(X_evo_v, y_evo_v, generations=15)
 
             if self.verbose:
                 # Let's see what personality they developed
@@ -483,7 +483,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
                 # Fallback for sensitive kernels
                 if self.verbose: print(f"   [Warning] Unit {i+1} adaptation issue: {e}")
                 # Re-initialize properly if failed
-                unit = SVC(kernel='rbf', C=1.0, probability=True)
+                unit = SVC(kernel='rbf', C=1.0, probability=False)
                 unit.fit(X_evo_t, y_evo_t)
 
 
