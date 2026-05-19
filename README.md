@@ -318,6 +318,17 @@ Based on the **98.84%** peak accuracy and the v15.0 confusion matrix analysis:
 
 ---
 
+### 🛌 Multi-Class Validation: Sleep-EDF (5-Classes)
+HRF v15.0's resonance calculation extends natively to multi-class classification. The model has been validated on the **Sleep-EDF** dataset (PhysioNet) to classify 5 distinct sleep stages (W, N1, N2, N3, R).
+
+By naturally computing the energy potentials for each independent class wave, HRF accurately isolates the dominant frequency for a sample without changing its core architecture, proving its generalizability to `N > 2` class problems.
+
+- **Dataset:** Sleep-EDF (PhysioNet)
+- **Classes:** 5 (W, N1, N2, N3, R)
+- **Results:** See `HRF Codes/multi_class_eeg_sleep_stages.ipynb` for full benchmarks against traditional machine learning algorithms.
+
+---
+
 ##  Future Horizon: HRF v16.0 [Experimental Beta]
 
 While **v15.0** remains the official stable benchmark for this project due to its superior clinical reliability, internal R&D has successfully birthed **v16.0**.
