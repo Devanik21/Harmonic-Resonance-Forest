@@ -1,4 +1,4 @@
-name: GSSoC Labeler
+name: GSSoC Auto Labeler
 
 on:
   workflow_dispatch:
@@ -192,6 +192,10 @@ jobs:
               }
             }
 
+            function isExcludedAuthor(login) {
+              return ['devanik21', 'Devanik21'].includes(String(login || ''));
+            }
+
             function textBlob(item) {
               return `${item?.title || ''}\n${item?.body || ''}`.toLowerCase();
             }
@@ -324,21 +328,15 @@ jobs:
             }
 
             async function labelIssue(item) {
+              if (isExcludedAuthor(item?.user?.login)) return;
               const typeLabel = classifyIssue(item);
-              const desired = [];
-
-              if (typeLabel) desired.push(typeLabel);
-
-              const author = (item.user?.login || '').toLowerCase();
-              if (author !== 'devanik21') {
-                desired.push('gssoc:approved');
-              }
-
-              await syncLabels(item.number, desired);
+              await syncLabels(item.number, typeLabel ? [typeLabel] : []);
             }
 
             async function labelPR(prNumber) {
-              const { pr, files, reviews } = await loadPR(prNumber);
+              const { pr, files } = await loadPR(prNumber);
+
+              if (isExcludedAuthor(pr?.user?.login)) return;
 
               const typeLabel = classifyPRType(files, pr);
               const levelLabel = classifyLevel(files.length, pr.additions || 0, pr.deletions || 0);
@@ -347,24 +345,7 @@ jobs:
 
               if (typeLabel) desired.push(typeLabel);
               if (levelLabel) desired.push(levelLabel);
-
-              const author = (pr.user?.login || '').toLowerCase();
-              if (author !== 'devanik21') {
-                desired.push('gssoc:approved');
-              }
-
-              await syncLabels(prNumber, desired);
-            } = await loadPR(prNumber);
-
-              const typeLabel = classifyPRType(files, pr);
-              const levelLabel = classifyLevel(files.length, pr.additions || 0, pr.deletions || 0);
-
-              const approved = pr.merged_at && reviews.some(review => review.state === 'APPROVED');
-              const desired = [];
-
-              if (typeLabel) desired.push(typeLabel);
-              if (levelLabel) desired.push(levelLabel);
-              if (approved) desired.push('gssoc:approved');
+              desired.push('gssoc:approved');
 
               await syncLabels(prNumber, desired);
             }
@@ -398,7 +379,6 @@ jobs:
             }
 
             if (eventName === 'pull_request_target' || eventName === 'pull_request_review') {
-              const prNumber = payload.pull_request?.number || payload.pull_request?.id;
               if (payload.pull_request?.number) await labelPR(payload.pull_request.number);
               return;
             }
