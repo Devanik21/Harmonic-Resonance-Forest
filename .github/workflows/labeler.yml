@@ -3,20 +3,15 @@ name: GSSoC Auto Labeler
 on:
   workflow_dispatch:
     inputs:
-      scope:
-        description: 'What to scan on manual run'
+      sync_existing:
+        description: "Label all existing issues and pull requests"
         required: false
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - open
-  pull_request_target:
-    types: [opened, reopened, synchronize, edited, ready_for_review, closed]
-  pull_request_review:
-    types: [submitted, dismissed]
+        type: boolean
+        default: true
   issues:
-    types: [opened, reopened, edited, closed]
+    types: [opened, reopened, edited]
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review, edited]
 
 permissions:
   contents: read
@@ -24,67 +19,73 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: gssoc-label-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
-  cancel-in-progress: true
+  group: gssoc-labeler-${{ github.event_name }}-${{ github.event.issue.number || github.event.pull_request.number || 'manual' }}
+  cancel-in-progress: false
 
 jobs:
   label:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Sync GSSoC labels
+      - name: Create and sync GSSoC labels
         uses: actions/github-script@v7
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const eventName = context.eventName;
-            const payload = context.payload;
 
             const LABELS = {
               'gssoc:approved': {
                 color: '2da44e',
-                description: 'Merged and approved GSSoC contribution'
+                description: 'GSSoC approved contribution'
+              },
+              'quality:clean': {
+                color: 'd4f0ff',
+                description: 'Clean and well-structured contribution'
+              },
+              'quality:exceptional': {
+                color: 'a2facf',
+                description: 'Exceptional implementation quality'
               },
               'level:beginner': {
                 color: '9be9a8',
-                description: 'Small, beginner-friendly contribution'
+                description: 'Beginner-friendly contribution'
               },
               'level:intermediate': {
                 color: 'fbca04',
-                description: 'Moderate contribution complexity'
+                description: 'Intermediate contribution'
               },
               'level:advanced': {
                 color: 'fd8c73',
-                description: 'Large or advanced contribution'
+                description: 'Advanced contribution'
               },
               'level:critical': {
                 color: '8250df',
-                description: 'High-impact or very complex contribution'
+                description: 'Critical or very complex contribution'
               },
               'type:docs': {
                 color: 'd4c5f9',
-                description: 'Documentation changes'
+                description: 'Documentation-related work'
               },
               'type:bug': {
                 color: 'ffccd5',
-                description: 'Bug fix changes'
+                description: 'Bug fix'
               },
               'type:feature': {
                 color: 'd4bfff',
-                description: 'New feature or enhancement'
+                description: 'Feature or enhancement'
               },
               'type:testing': {
                 color: 'b6e3ff',
-                description: 'Testing related changes'
+                description: 'Testing-related work'
               },
               'type:design': {
                 color: 'ffb3c7',
-                description: 'Design, UI, or UX related changes'
+                description: 'Design or UI/UX work'
               },
               'type:refactor': {
                 color: 'b7eb8f',
-                description: 'Refactoring or cleanup work'
+                description: 'Refactor or cleanup work'
               },
               'type:accessibility': {
                 color: 'b6e3ff',
@@ -96,29 +97,15 @@ jobs:
               },
               'type:devops': {
                 color: 'ffd6a5',
-                description: 'CI, deployment, or infrastructure changes'
+                description: 'CI, deployment, or infrastructure'
               },
               'type:security': {
                 color: 'ffadad',
-                description: 'Security-related changes'
+                description: 'Security-related work'
               }
             };
 
-            const MANAGED = new Set(Object.keys(LABELS));
-            const TYPE_PRIORITY = [
-              'type:security',
-              'type:devops',
-              'type:accessibility',
-              'type:performance',
-              'type:testing',
-              'type:docs',
-              'type:design',
-              'type:bug',
-              'type:feature',
-              'type:refactor'
-            ];
-
-            const LEVELS = ['level:beginner', 'level:intermediate', 'level:advanced', 'level:critical'];
+            const MANAGED = Object.keys(LABELS);
 
             async function ensureLabel(name) {
               const meta = LABELS[name];
@@ -137,191 +124,228 @@ jobs:
             }
 
             async function ensureAllLabels() {
-              for (const name of Object.keys(LABELS)) {
+              for (const name of MANAGED) {
                 await ensureLabel(name);
               }
             }
 
-            function uniq(arr) {
-              return [...new Set(arr.filter(Boolean))];
-            }
-
-            async function getCurrentManagedLabels(issueNumber) {
+            async function currentLabels(issueNumber) {
               const labels = await github.paginate(github.rest.issues.listLabelsOnIssue, {
                 owner,
                 repo,
                 issue_number: issueNumber,
                 per_page: 100
               });
-              return labels.map(l => l.name).filter(n => MANAGED.has(n));
+              return labels.map(l => l.name);
             }
 
-            async function syncManagedLabels(issueNumber, desiredLabels) {
-              const desired = uniq(desiredLabels).filter(Boolean);
-              const current = await getCurrentManagedLabels(issueNumber);
+            async function applyLabels(issueNumber, desiredLabels) {
+              const desired = [...new Set(desiredLabels.filter(Boolean))];
+              const existing = new Set(await currentLabels(issueNumber));
+              const toAdd = desired.filter(label => !existing.has(label));
 
-              const toAdd = desired.filter(name => !current.includes(name));
-              const toRemove = current.filter(name => !desired.includes(name));
-
-              if (toAdd.length) {
-                await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: toAdd });
-              }
-
-              for (const name of toRemove) {
-                try {
-                  await github.rest.issues.removeLabel({ owner, repo, issue_number: issueNumber, name });
-                } catch (error) {
-                  if (error.status !== 404) throw error;
-                }
+              if (toAdd.length > 0) {
+                await github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  labels: toAdd
+                });
               }
             }
 
-            function itemBlob(item) {
-              return `${item?.title || ''}\n${item?.body || ''}`.toLowerCase();
+            function textBlob() {
+              const parts = [];
+              const issue = context.payload.issue;
+              const pr = context.payload.pull_request;
+
+              if (issue?.title) parts.push(issue.title);
+              if (issue?.body) parts.push(issue.body);
+              if (pr?.title) parts.push(pr.title);
+              if (pr?.body) parts.push(pr.body);
+
+              return parts.join('\n').toLowerCase();
             }
 
-            function chooseFirstMatch(candidates) {
-              for (const label of TYPE_PRIORITY) {
-                if (candidates.has(label)) return label;
-              }
-              return null;
+            function classifyIssueByText(blob) {
+              const labels = new Set();
+
+              if (/\b(bug|error|crash|fail|broken|fix|issue)\b/.test(blob)) labels.add('type:bug');
+              if (/\b(feature|enhancement|request|add|implement|new)\b/.test(blob)) labels.add('type:feature');
+              if (/\b(doc|docs|documentation|readme|guide|tutorial)\b/.test(blob)) labels.add('type:docs');
+              if (/\b(test|testing|qa|unit test|integration test)\b/.test(blob)) labels.add('type:testing');
+              if (/\b(design|ui|ux|layout|mockup|style)\b/.test(blob)) labels.add('type:design');
+              if (/\b(refactor|cleanup|restructure|simplify|rewrite|rename)\b/.test(blob)) labels.add('type:refactor');
+              if (/\b(accessibility|a11y|aria|wcag)\b/.test(blob)) labels.add('type:accessibility');
+              if (/\b(performance|slow|optimi[sz]e|lag|benchmark|cache)\b/.test(blob)) labels.add('type:performance');
+              if (/\b(devops|ci|cd|deploy|deployment|pipeline|docker|kubernetes|terraform)\b/.test(blob)) labels.add('type:devops');
+              if (/\b(security|auth|oauth|jwt|secret|encrypt|vulnerability)\b/.test(blob)) labels.add('type:security');
+
+              return labels;
             }
 
-            function classifyLevel(filesCount, additions, deletions) {
+            function classifyFiles(files, blob) {
+              const labels = new Set();
+              const names = files.map(f => f.filename.toLowerCase());
+
+              const docsHint = names.some(name =>
+                name.startsWith('docs/') ||
+                name.includes('/docs/') ||
+                /(^|\/)(readme|changelog|contributing|code_of_conduct|license)(\.[^/]+)?$/.test(name) ||
+                /\.(md|mdx|rst|txt|adoc)$/.test(name)
+              );
+              if (docsHint || /\bdocs?\b/.test(blob) || /\bdocumentation\b/.test(blob)) labels.add('type:docs');
+
+              const testingHint = names.some(name =>
+                name.includes('/test/') ||
+                name.includes('/tests/') ||
+                name.includes('/__tests__/') ||
+                /(^|\/)(test|tests)\//.test(name) ||
+                /\.(test|spec)\.[^.]+$/.test(name)
+              );
+              if (testingHint || /\btest(s|ing)?\b/.test(blob) || /\bqa\b/.test(blob)) labels.add('type:testing');
+
+              const designHint = names.some(name =>
+                name.includes('/design/') ||
+                name.includes('/ui/') ||
+                name.includes('/ux/') ||
+                name.includes('/assets/') ||
+                /\.(fig|svg|png|jpe?g|gif|webp|ico)$/.test(name) ||
+                /\.(css|scss|sass|less)$/.test(name)
+              );
+              if (designHint || /\bdesign\b/.test(blob) || /\bui\b/.test(blob) || /\bux\b/.test(blob)) labels.add('type:design');
+
+              const accessibilityHint = names.some(name =>
+                name.includes('accessibility') ||
+                name.includes('/a11y/') ||
+                /aria|wcag/.test(name)
+              );
+              if (accessibilityHint || /\baccessibility\b/.test(blob) || /\ba11y\b/.test(blob) || /\baria\b/.test(blob) || /\bwcag\b/.test(blob)) labels.add('type:accessibility');
+
+              const performanceHint = names.some(name =>
+                name.includes('perf') ||
+                name.includes('performance') ||
+                name.includes('benchmark') ||
+                name.includes('cache')
+              );
+              if (performanceHint || /\bperformance\b/.test(blob) || /\boptimi[sz]e\b/.test(blob) || /\bbenchmark\b/.test(blob)) labels.add('type:performance');
+
+              const devopsHint = names.some(name =>
+                name.startsWith('.github/workflows/') ||
+                name.includes('/.github/workflows/') ||
+                name.includes('/docker') ||
+                name.includes('dockerfile') ||
+                name.includes('compose.yml') ||
+                name.includes('compose.yaml') ||
+                name.includes('terraform') ||
+                name.includes('k8s') ||
+                name.includes('kubernetes') ||
+                name.includes('helm') ||
+                name.includes('/ci/')
+              );
+              if (devopsHint || /\b(devops|ci|cd|deploy|deployment|pipeline|docker|kubernetes|terraform)\b/.test(blob)) labels.add('type:devops');
+
+              const securityHint = names.some(name =>
+                name.includes('security') ||
+                name.includes('/auth/') ||
+                name.includes('oauth') ||
+                name.includes('jwt') ||
+                name.includes('secret') ||
+                name.includes('encrypt')
+              );
+              if (securityHint || /\bsecurity\b/.test(blob) || /\bauth\b/.test(blob) || /\boauth\b/.test(blob) || /\bjwt\b/.test(blob) || /\bencrypt/.test(blob)) labels.add('type:security');
+
+              const bugHint = /\b(bug|fix|hotfix|patch|resolve|resolved|issue)\b/.test(blob);
+              if (bugHint) labels.add('type:bug');
+
+              const featureHint = /\b(feature|enhancement|implement|add|added|introduce|new)\b/.test(blob);
+              if (featureHint) labels.add('type:feature');
+
+              const refactorHint = /\b(refactor|cleanup|restructure|simplify|rewrite|rename)\b/.test(blob);
+              if (refactorHint) labels.add('type:refactor');
+
+              return labels;
+            }
+
+            function classifyLevel(fileCount, additions, deletions) {
               const total = (additions || 0) + (deletions || 0);
-              if (filesCount <= 3 && total <= 50) return 'level:beginner';
-              if (filesCount <= 8 && total <= 250) return 'level:intermediate';
-              if (filesCount <= 15 && total <= 700) return 'level:advanced';
+
+              if (fileCount <= 3 && total <= 50) return 'level:beginner';
+              if (fileCount <= 8 && total <= 250) return 'level:intermediate';
+              if (fileCount <= 15 && total <= 700) return 'level:advanced';
               return 'level:critical';
             }
 
-            function classifyIssue(item) {
-              const blob = itemBlob(item);
-              const labels = new Set();
+            async function getPrMeta(prNumber) {
+              const [pr, files, reviews] = await Promise.all([
+                github.rest.pulls.get({
+                  owner,
+                  repo,
+                  pull_number: prNumber
+                }),
+                github.paginate(github.rest.pulls.listFiles, {
+                  owner,
+                  repo,
+                  pull_number: prNumber,
+                  per_page: 100
+                }),
+                github.paginate(github.rest.pulls.listReviews, {
+                  owner,
+                  repo,
+                  pull_number: prNumber,
+                  per_page: 100
+                })
+              ]);
 
-              if (/\b(security|auth|oauth|jwt|secret|vulnerability|encrypt)\b/.test(blob)) labels.add('type:security');
-              if (/\b(devops|ci|cd|deploy|deployment|pipeline|docker|kubernetes|terraform)\b/.test(blob)) labels.add('type:devops');
-              if (/\b(accessibility|a11y|aria|wcag)\b/.test(blob)) labels.add('type:accessibility');
-              if (/\b(performance|slow|optimi[sz]e|lag|benchmark|cache)\b/.test(blob)) labels.add('type:performance');
-              if (/\b(test|testing|qa)\b/.test(blob)) labels.add('type:testing');
-              if (/\b(docs?|documentation|readme)\b/.test(blob)) labels.add('type:docs');
-              if (/\b(design|ui|ux|layout|style|mockup)\b/.test(blob)) labels.add('type:design');
-              if (/\b(bug|error|crash|fail|broken|issue|fix|hotfix|patch)\b/.test(blob)) labels.add('type:bug');
-              if (/\b(feature|enhancement|request|add|implement)\b/.test(blob)) labels.add('type:feature');
-              if (/\b(refactor|cleanup|restructure|simplify|rewrite|rename)\b/.test(blob)) labels.add('type:refactor');
-
-              return chooseFirstMatch(labels);
+              return { pr: pr.data, files, reviews };
             }
 
-            function classifyPRType(files, pr) {
-              const candidates = new Set();
-              const names = files.map(f => f.filename.toLowerCase());
-              const blob = itemBlob(pr);
+            async function labelIssueOrPr(item) {
+              const issueNumber = item.number;
+              const blob = `${item.title || ''}\n${item.body || ''}`.toLowerCase();
 
-              const docs = names.some(n => n.startsWith('docs/') || n.includes('/docs/') || /(^|\/)(readme|changelog|contributing|code_of_conduct|license)(\.[^/]+)?$/.test(n) || /\.(md|mdx|rst|txt|adoc)$/i.test(n));
-              if (docs || /\bdocs?\b/.test(blob) || /\bdocumentation\b/.test(blob)) candidates.add('type:docs');
+              const labels = new Set(['gssoc:approved', 'quality:clean']);
 
-              const testing = names.some(n => n.includes('/test/') || n.includes('/tests/') || n.includes('/__tests__/') || /(^|\/)(test|tests)\//.test(n) || /\.(test|spec)\.[^.]+$/.test(n));
-              if (testing || /\btest(s|ing)?\b/.test(blob) || /\bqa\b/.test(blob)) candidates.add('type:testing');
+              if (item.pull_request) {
+                const prNumber = item.number;
+                const { pr, files } = await getPrMeta(prNumber);
+                classifyFiles(files, blob).forEach(label => labels.add(label));
+                labels.add(classifyLevel(files.length, pr.additions || 0, pr.deletions || 0));
+              } else {
+                classifyIssueByText(blob).forEach(label => labels.add(label));
+              }
 
-              const design = names.some(n => n.includes('/design/') || n.includes('/ui/') || n.includes('/ux/') || n.includes('/assets/') || /\.(fig|svg|png|jpe?g|gif|webp|ico)$/i.test(n) || /\.(css|scss|sass|less)$/i.test(n));
-              if (design || /\bdesign\b/.test(blob) || /\bui\b/.test(blob) || /\bux\b/.test(blob)) candidates.add('type:design');
-
-              const accessibility = names.some(n => n.includes('accessibility') || n.includes('/a11y/') || /aria|wcag/.test(n));
-              if (accessibility || /\baccessibility\b/.test(blob) || /\ba11y\b/.test(blob) || /\baria\b/.test(blob) || /\bwcag\b/.test(blob)) candidates.add('type:accessibility');
-
-              const performance = names.some(n => n.includes('perf') || n.includes('performance') || n.includes('benchmark') || n.includes('cache'));
-              if (performance || /\bperformance\b/.test(blob) || /\boptimi[sz]e\b/.test(blob) || /\bbenchmark\b/.test(blob)) candidates.add('type:performance');
-
-              const devops = names.some(n => n.startsWith('.github/workflows/') || n.includes('/.github/workflows/') || n.includes('/docker') || n.includes('dockerfile') || n.includes('compose.yml') || n.includes('compose.yaml') || n.includes('terraform') || n.includes('k8s') || n.includes('kubernetes') || n.includes('helm') || n.includes('/ci/'));
-              if (devops || /\b(devops|ci|cd|deploy|deployment|pipeline|docker|kubernetes|terraform)\b/.test(blob)) candidates.add('type:devops');
-
-              const security = names.some(n => n.includes('security') || n.includes('/auth/') || n.includes('oauth') || n.includes('jwt') || n.includes('secret') || n.includes('encrypt'));
-              if (security || /\bsecurity\b/.test(blob) || /\bauth\b/.test(blob) || /\boauth\b/.test(blob) || /\bjwt\b/.test(blob) || /\bencrypt/.test(blob)) candidates.add('type:security');
-
-              const bug = /\b(bug|fix|hotfix|patch|resolve|resolved|issue)\b/.test(blob);
-              if (bug) candidates.add('type:bug');
-
-              const feature = /\b(feature|enhancement|implement|add|added|introduce|new)\b/.test(blob);
-              if (feature) candidates.add('type:feature');
-
-              const refactor = /\b(refactor|cleanup|restructure|simplify|rewrite|rename)\b/.test(blob);
-              if (refactor) candidates.add('type:refactor');
-
-              return chooseFirstMatch(candidates);
+              await applyLabels(issueNumber, [...labels]);
             }
 
-            async function getPRFilesAndReviews(prNumber) {
-              const files = await github.paginate(github.rest.pulls.listFiles, {
+            async function syncCurrentEvent() {
+              const payloadIssue = context.payload.issue;
+              const payloadPr = context.payload.pull_request;
+              const item = payloadIssue || payloadPr;
+              if (!item) return;
+
+              await labelIssueOrPr(item);
+            }
+
+            async function syncExistingItems() {
+              const items = await github.paginate(github.rest.issues.listForRepo, {
                 owner,
                 repo,
-                pull_number: prNumber,
-                per_page: 100
+                state: 'all',
+                per_page: 100,
+                sort: 'created',
+                direction: 'asc'
               });
 
-              const reviews = await github.paginate(github.rest.pulls.listReviews, {
-                owner,
-                repo,
-                pull_number: prNumber,
-                per_page: 100
-              });
-
-              return { files, reviews };
-            }
-
-            async function labelIssue(item) {
-              const typeLabel = classifyIssue(item);
-              const desired = typeLabel ? [typeLabel] : [];
-              await syncManagedLabels(item.number, desired);
-            }
-
-            async function labelPR(pr) {
-              const { files, reviews } = await getPRFilesAndReviews(pr.number);
-
-              const typeLabel = classifyPRType(files, pr);
-              const levelLabel = classifyLevel(files.length, pr.additions || 0, pr.deletions || 0);
-
-              const merged = Boolean(pr.merged_at || pr.merged);
-              const approved = reviews.some(review => review.state === 'APPROVED');
-
-              const desired = [];
-              if (typeLabel) desired.push(typeLabel);
-              if (levelLabel) desired.push(levelLabel);
-              if (merged && approved) desired.push('gssoc:approved');
-
-              await syncManagedLabels(pr.number, desired);
+              for (const item of items) {
+                await labelIssueOrPr(item);
+              }
             }
 
             await ensureAllLabels();
 
-            if (eventName === 'workflow_dispatch') {
-              const scope = (payload.inputs?.scope || 'all').toLowerCase();
-              const issues = await github.paginate(github.rest.issues.listForRepo, {
-                owner,
-                repo,
-                state: scope === 'open' ? 'open' : 'all',
-                per_page: 100
-              });
-
-              for (const item of issues) {
-                if (item.pull_request) {
-                  await labelPR(item);
-                } else {
-                  await labelIssue(item);
-                }
-              }
-              return;
-            }
-
-            if (eventName === 'issues') {
-              const issue = payload.issue;
-              if (!issue) return;
-              await labelIssue(issue);
-              return;
-            }
-
-            if (eventName === 'pull_request_target' || eventName === 'pull_request_review') {
-              const pr = payload.pull_request;
-              if (!pr) return;
-              await labelPR(pr);
+            if (context.eventName === 'workflow_dispatch') {
+              await syncExistingItems();
+            } else {
+              await syncCurrentEvent();
             }
