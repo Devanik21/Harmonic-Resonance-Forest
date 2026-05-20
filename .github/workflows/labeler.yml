@@ -11,7 +11,9 @@ on:
   issues:
     types: [opened, reopened, edited]
   pull_request_target:
-    types: [opened, reopened, synchronize, ready_for_review, edited]
+    types: [opened, reopened, synchronize, ready_for_review, edited, closed]
+  pull_request_review:
+    types: [submitted, dismissed]
 
 permissions:
   contents: read
@@ -27,65 +29,59 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Create and sync GSSoC labels
+      - name: Sync GSSoC labels
         uses: actions/github-script@v7
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+            const eventName = context.eventName;
+            const payload = context.payload;
 
-            const LABELS = {
+            const LABELS_TO_CREATE = {
               'gssoc:approved': {
                 color: '2da44e',
-                description: 'GSSoC approved contribution'
-              },
-              'quality:clean': {
-                color: 'd4f0ff',
-                description: 'Clean and well-structured contribution'
-              },
-              'quality:exceptional': {
-                color: 'a2facf',
-                description: 'Exceptional implementation quality'
+                description: 'Merged and approved GSSoC contribution'
               },
               'level:beginner': {
                 color: '9be9a8',
-                description: 'Beginner-friendly contribution'
+                description: 'Small, beginner-friendly contribution'
               },
               'level:intermediate': {
                 color: 'fbca04',
-                description: 'Intermediate contribution'
+                description: 'Moderate contribution complexity'
               },
               'level:advanced': {
                 color: 'fd8c73',
-                description: 'Advanced contribution'
+                description: 'Large or advanced contribution'
               },
               'level:critical': {
                 color: '8250df',
-                description: 'Critical or very complex contribution'
+                description: 'High-impact or very complex contribution'
               },
               'type:docs': {
                 color: 'd4c5f9',
-                description: 'Documentation-related work'
+                description: 'Documentation changes'
               },
               'type:bug': {
                 color: 'ffccd5',
-                description: 'Bug fix'
+                description: 'Bug fix changes'
               },
               'type:feature': {
                 color: 'd4bfff',
-                description: 'Feature or enhancement'
+                description: 'New feature or enhancement'
               },
               'type:testing': {
                 color: 'b6e3ff',
-                description: 'Testing-related work'
+                description: 'Testing related changes'
               },
               'type:design': {
                 color: 'ffb3c7',
-                description: 'Design or UI/UX work'
+                description: 'Design, UI, or UX related changes'
               },
               'type:refactor': {
                 color: 'b7eb8f',
-                description: 'Refactor or cleanup work'
+                description: 'Refactoring or cleanup work'
               },
               'type:accessibility': {
                 color: 'b6e3ff',
@@ -97,18 +93,39 @@ jobs:
               },
               'type:devops': {
                 color: 'ffd6a5',
-                description: 'CI, deployment, or infrastructure'
+                description: 'CI, deployment, or infrastructure changes'
               },
               'type:security': {
                 color: 'ffadad',
-                description: 'Security-related work'
+                description: 'Security-related changes'
               }
             };
 
-            const MANAGED = Object.keys(LABELS);
+            // Old labels from earlier versions that should be removed if present.
+            const LEGACY_LABELS = ['quality:clean', 'quality:exceptional'];
+
+            const TYPE_ORDER = [
+              'type:security',
+              'type:devops',
+              'type:accessibility',
+              'type:performance',
+              'type:testing',
+              'type:docs',
+              'type:design',
+              'type:bug',
+              'type:feature',
+              'type:refactor'
+            ];
+
+            const LEVEL_ORDER = [
+              'level:beginner',
+              'level:intermediate',
+              'level:advanced',
+              'level:critical'
+            ];
 
             async function ensureLabel(name) {
-              const meta = LABELS[name];
+              const meta = LABELS_TO_CREATE[name];
               try {
                 await github.rest.issues.getLabel({ owner, repo, name });
               } catch (error) {
@@ -124,88 +141,109 @@ jobs:
             }
 
             async function ensureAllLabels() {
-              for (const name of MANAGED) {
+              for (const name of Object.keys(LABELS_TO_CREATE)) {
                 await ensureLabel(name);
               }
             }
 
-            async function currentLabels(issueNumber) {
+            async function listLabelsOnItem(number) {
               const labels = await github.paginate(github.rest.issues.listLabelsOnIssue, {
                 owner,
                 repo,
-                issue_number: issueNumber,
+                issue_number: number,
                 per_page: 100
               });
-              return labels.map(l => l.name);
+              return labels.map(label => label.name);
             }
 
-            async function applyLabels(issueNumber, desiredLabels) {
+            async function syncLabels(number, desiredLabels) {
               const desired = [...new Set(desiredLabels.filter(Boolean))];
-              const existing = new Set(await currentLabels(issueNumber));
-              const toAdd = desired.filter(label => !existing.has(label));
+              const current = await listLabelsOnItem(number);
+              const currentSet = new Set(current);
+
+              const managed = new Set([
+                ...Object.keys(LABELS_TO_CREATE),
+                ...LEGACY_LABELS
+              ]);
+
+              const toAdd = desired.filter(label => !currentSet.has(label));
+              const toRemove = current.filter(label => managed.has(label) && !desired.includes(label));
 
               if (toAdd.length > 0) {
                 await github.rest.issues.addLabels({
                   owner,
                   repo,
-                  issue_number: issueNumber,
+                  issue_number: number,
                   labels: toAdd
                 });
               }
+
+              for (const label of toRemove) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: number,
+                    name: label
+                  });
+                } catch (error) {
+                  if (error.status !== 404) throw error;
+                }
+              }
             }
 
-            function textBlob() {
-              const parts = [];
-              const issue = context.payload.issue;
-              const pr = context.payload.pull_request;
-
-              if (issue?.title) parts.push(issue.title);
-              if (issue?.body) parts.push(issue.body);
-              if (pr?.title) parts.push(pr.title);
-              if (pr?.body) parts.push(pr.body);
-
-              return parts.join('\n').toLowerCase();
+            function textBlob(item) {
+              return `${item?.title || ''}\n${item?.body || ''}`.toLowerCase();
             }
 
-            function classifyIssueByText(blob) {
-              const labels = new Set();
-
-              if (/\b(bug|error|crash|fail|broken|fix|issue)\b/.test(blob)) labels.add('type:bug');
-              if (/\b(feature|enhancement|request|add|implement|new)\b/.test(blob)) labels.add('type:feature');
-              if (/\b(doc|docs|documentation|readme|guide|tutorial)\b/.test(blob)) labels.add('type:docs');
-              if (/\b(test|testing|qa|unit test|integration test)\b/.test(blob)) labels.add('type:testing');
-              if (/\b(design|ui|ux|layout|mockup|style)\b/.test(blob)) labels.add('type:design');
-              if (/\b(refactor|cleanup|restructure|simplify|rewrite|rename)\b/.test(blob)) labels.add('type:refactor');
-              if (/\b(accessibility|a11y|aria|wcag)\b/.test(blob)) labels.add('type:accessibility');
-              if (/\b(performance|slow|optimi[sz]e|lag|benchmark|cache)\b/.test(blob)) labels.add('type:performance');
-              if (/\b(devops|ci|cd|deploy|deployment|pipeline|docker|kubernetes|terraform)\b/.test(blob)) labels.add('type:devops');
-              if (/\b(security|auth|oauth|jwt|secret|encrypt|vulnerability)\b/.test(blob)) labels.add('type:security');
-
-              return labels;
+            function pickFirst(candidates, order) {
+              for (const label of order) {
+                if (candidates.has(label)) return label;
+              }
+              return null;
             }
 
-            function classifyFiles(files, blob) {
-              const labels = new Set();
-              const names = files.map(f => f.filename.toLowerCase());
+            function classifyIssue(item) {
+              const blob = textBlob(item);
+              const matches = new Set();
 
-              const docsHint = names.some(name =>
+              if (/\b(security|auth|oauth|jwt|secret|vulnerability|encrypt)\b/.test(blob)) matches.add('type:security');
+              if (/\b(devops|ci|cd|deploy|deployment|pipeline|docker|kubernetes|terraform)\b/.test(blob)) matches.add('type:devops');
+              if (/\b(accessibility|a11y|aria|wcag)\b/.test(blob)) matches.add('type:accessibility');
+              if (/\b(performance|slow|optimi[sz]e|lag|benchmark|cache)\b/.test(blob)) matches.add('type:performance');
+              if (/\b(test|testing|qa)\b/.test(blob)) matches.add('type:testing');
+              if (/\b(docs?|documentation|readme)\b/.test(blob)) matches.add('type:docs');
+              if (/\b(design|ui|ux|layout|style|mockup)\b/.test(blob)) matches.add('type:design');
+              if (/\b(bug|error|crash|fail|broken|issue|fix|hotfix|patch)\b/.test(blob)) matches.add('type:bug');
+              if (/\b(feature|enhancement|request|add|implement)\b/.test(blob)) matches.add('type:feature');
+              if (/\b(refactor|cleanup|restructure|simplify|rewrite|rename)\b/.test(blob)) matches.add('type:refactor');
+
+              return pickFirst(matches, TYPE_ORDER);
+            }
+
+            function classifyPRType(files, pr) {
+              const candidates = new Set();
+              const filenames = files.map(file => file.filename.toLowerCase());
+              const blob = textBlob(pr);
+
+              const docs = filenames.some(name =>
                 name.startsWith('docs/') ||
                 name.includes('/docs/') ||
                 /(^|\/)(readme|changelog|contributing|code_of_conduct|license)(\.[^/]+)?$/.test(name) ||
                 /\.(md|mdx|rst|txt|adoc)$/.test(name)
               );
-              if (docsHint || /\bdocs?\b/.test(blob) || /\bdocumentation\b/.test(blob)) labels.add('type:docs');
+              if (docs || /\bdocs?\b/.test(blob) || /\bdocumentation\b/.test(blob)) candidates.add('type:docs');
 
-              const testingHint = names.some(name =>
+              const testing = filenames.some(name =>
                 name.includes('/test/') ||
                 name.includes('/tests/') ||
                 name.includes('/__tests__/') ||
                 /(^|\/)(test|tests)\//.test(name) ||
                 /\.(test|spec)\.[^.]+$/.test(name)
               );
-              if (testingHint || /\btest(s|ing)?\b/.test(blob) || /\bqa\b/.test(blob)) labels.add('type:testing');
+              if (testing || /\btest(s|ing)?\b/.test(blob) || /\bqa\b/.test(blob)) candidates.add('type:testing');
 
-              const designHint = names.some(name =>
+              const design = filenames.some(name =>
                 name.includes('/design/') ||
                 name.includes('/ui/') ||
                 name.includes('/ux/') ||
@@ -213,24 +251,24 @@ jobs:
                 /\.(fig|svg|png|jpe?g|gif|webp|ico)$/.test(name) ||
                 /\.(css|scss|sass|less)$/.test(name)
               );
-              if (designHint || /\bdesign\b/.test(blob) || /\bui\b/.test(blob) || /\bux\b/.test(blob)) labels.add('type:design');
+              if (design || /\bdesign\b/.test(blob) || /\bui\b/.test(blob) || /\bux\b/.test(blob)) candidates.add('type:design');
 
-              const accessibilityHint = names.some(name =>
+              const accessibility = filenames.some(name =>
                 name.includes('accessibility') ||
                 name.includes('/a11y/') ||
                 /aria|wcag/.test(name)
               );
-              if (accessibilityHint || /\baccessibility\b/.test(blob) || /\ba11y\b/.test(blob) || /\baria\b/.test(blob) || /\bwcag\b/.test(blob)) labels.add('type:accessibility');
+              if (accessibility || /\baccessibility\b/.test(blob) || /\ba11y\b/.test(blob) || /\baria\b/.test(blob) || /\bwcag\b/.test(blob)) candidates.add('type:accessibility');
 
-              const performanceHint = names.some(name =>
+              const performance = filenames.some(name =>
                 name.includes('perf') ||
                 name.includes('performance') ||
                 name.includes('benchmark') ||
                 name.includes('cache')
               );
-              if (performanceHint || /\bperformance\b/.test(blob) || /\boptimi[sz]e\b/.test(blob) || /\bbenchmark\b/.test(blob)) labels.add('type:performance');
+              if (performance || /\bperformance\b/.test(blob) || /\boptimi[sz]e\b/.test(blob) || /\bbenchmark\b/.test(blob)) candidates.add('type:performance');
 
-              const devopsHint = names.some(name =>
+              const devops = filenames.some(name =>
                 name.startsWith('.github/workflows/') ||
                 name.includes('/.github/workflows/') ||
                 name.includes('/docker') ||
@@ -243,9 +281,9 @@ jobs:
                 name.includes('helm') ||
                 name.includes('/ci/')
               );
-              if (devopsHint || /\b(devops|ci|cd|deploy|deployment|pipeline|docker|kubernetes|terraform)\b/.test(blob)) labels.add('type:devops');
+              if (devops || /\b(devops|ci|cd|deploy|deployment|pipeline|docker|kubernetes|terraform)\b/.test(blob)) candidates.add('type:devops');
 
-              const securityHint = names.some(name =>
+              const security = filenames.some(name =>
                 name.includes('security') ||
                 name.includes('/auth/') ||
                 name.includes('oauth') ||
@@ -253,99 +291,89 @@ jobs:
                 name.includes('secret') ||
                 name.includes('encrypt')
               );
-              if (securityHint || /\bsecurity\b/.test(blob) || /\bauth\b/.test(blob) || /\boauth\b/.test(blob) || /\bjwt\b/.test(blob) || /\bencrypt/.test(blob)) labels.add('type:security');
+              if (security || /\bsecurity\b/.test(blob) || /\bauth\b/.test(blob) || /\boauth\b/.test(blob) || /\bjwt\b/.test(blob) || /\bencrypt/.test(blob)) candidates.add('type:security');
 
-              const bugHint = /\b(bug|fix|hotfix|patch|resolve|resolved|issue)\b/.test(blob);
-              if (bugHint) labels.add('type:bug');
+              if (/\b(bug|fix|hotfix|patch|resolve|resolved|issue)\b/.test(blob)) candidates.add('type:bug');
+              if (/\b(feature|enhancement|implement|add|added|introduce|new)\b/.test(blob)) candidates.add('type:feature');
+              if (/\b(refactor|cleanup|restructure|simplify|rewrite|rename)\b/.test(blob)) candidates.add('type:refactor');
 
-              const featureHint = /\b(feature|enhancement|implement|add|added|introduce|new)\b/.test(blob);
-              if (featureHint) labels.add('type:feature');
-
-              const refactorHint = /\b(refactor|cleanup|restructure|simplify|rewrite|rename)\b/.test(blob);
-              if (refactorHint) labels.add('type:refactor');
-
-              return labels;
+              return pickFirst(candidates, TYPE_ORDER);
             }
 
-            function classifyLevel(fileCount, additions, deletions) {
+            function classifyLevel(filesCount, additions, deletions) {
               const total = (additions || 0) + (deletions || 0);
 
-              if (fileCount <= 3 && total <= 50) return 'level:beginner';
-              if (fileCount <= 8 && total <= 250) return 'level:intermediate';
-              if (fileCount <= 15 && total <= 700) return 'level:advanced';
+              if (filesCount <= 3 && total <= 50) return 'level:beginner';
+              if (filesCount <= 8 && total <= 250) return 'level:intermediate';
+              if (filesCount <= 15 && total <= 700) return 'level:advanced';
               return 'level:critical';
             }
 
-            async function getPrMeta(prNumber) {
+            async function loadPR(prNumber) {
               const [pr, files, reviews] = await Promise.all([
-                github.rest.pulls.get({
-                  owner,
-                  repo,
-                  pull_number: prNumber
-                }),
-                github.paginate(github.rest.pulls.listFiles, {
-                  owner,
-                  repo,
-                  pull_number: prNumber,
-                  per_page: 100
-                }),
-                github.paginate(github.rest.pulls.listReviews, {
-                  owner,
-                  repo,
-                  pull_number: prNumber,
-                  per_page: 100
-                })
+                github.rest.pulls.get({ owner, repo, pull_number: prNumber }),
+                github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: prNumber, per_page: 100 }),
+                github.paginate(github.rest.pulls.listReviews, { owner, repo, pull_number: prNumber, per_page: 100 })
               ]);
 
-              return { pr: pr.data, files, reviews };
+              return {
+                pr: pr.data,
+                files,
+                reviews
+              };
             }
 
-            async function labelIssueOrPr(item) {
-              const issueNumber = item.number;
-              const blob = `${item.title || ''}\n${item.body || ''}`.toLowerCase();
-
-              const labels = new Set(['gssoc:approved', 'quality:clean']);
-
-              if (item.pull_request) {
-                const prNumber = item.number;
-                const { pr, files } = await getPrMeta(prNumber);
-                classifyFiles(files, blob).forEach(label => labels.add(label));
-                labels.add(classifyLevel(files.length, pr.additions || 0, pr.deletions || 0));
-              } else {
-                classifyIssueByText(blob).forEach(label => labels.add(label));
-              }
-
-              await applyLabels(issueNumber, [...labels]);
+            async function labelIssue(item) {
+              const typeLabel = classifyIssue(item);
+              await syncLabels(item.number, typeLabel ? [typeLabel] : []);
             }
 
-            async function syncCurrentEvent() {
-              const payloadIssue = context.payload.issue;
-              const payloadPr = context.payload.pull_request;
-              const item = payloadIssue || payloadPr;
-              if (!item) return;
+            async function labelPR(prNumber) {
+              const { pr, files, reviews } = await loadPR(prNumber);
 
-              await labelIssueOrPr(item);
-            }
+              const typeLabel = classifyPRType(files, pr);
+              const levelLabel = classifyLevel(files.length, pr.additions || 0, pr.deletions || 0);
 
-            async function syncExistingItems() {
-              const items = await github.paginate(github.rest.issues.listForRepo, {
-                owner,
-                repo,
-                state: 'all',
-                per_page: 100,
-                sort: 'created',
-                direction: 'asc'
-              });
+              const approved = pr.merged_at && reviews.some(review => review.state === 'APPROVED');
+              const desired = [];
 
-              for (const item of items) {
-                await labelIssueOrPr(item);
-              }
+              if (typeLabel) desired.push(typeLabel);
+              if (levelLabel) desired.push(levelLabel);
+              if (approved) desired.push('gssoc:approved');
+
+              await syncLabels(prNumber, desired);
             }
 
             await ensureAllLabels();
 
-            if (context.eventName === 'workflow_dispatch') {
-              await syncExistingItems();
-            } else {
-              await syncCurrentEvent();
+            if (eventName === 'workflow_dispatch') {
+              const syncExisting = String(payload.inputs?.sync_existing ?? 'true').toLowerCase() !== 'false';
+              if (!syncExisting) return;
+
+              const items = await github.paginate(github.rest.issues.listForRepo, {
+                owner,
+                repo,
+                state: 'all',
+                per_page: 100
+              });
+
+              for (const item of items) {
+                if (item.pull_request) {
+                  await labelPR(item.number);
+                } else {
+                  await labelIssue(item);
+                }
+              }
+              return;
+            }
+
+            if (eventName === 'issues') {
+              if (payload.issue) await labelIssue(payload.issue);
+              return;
+            }
+
+            if (eventName === 'pull_request_target' || eventName === 'pull_request_review') {
+              const prNumber = payload.pull_request?.number || payload.pull_request?.id;
+              if (payload.pull_request?.number) await labelPR(payload.pull_request.number);
+              return;
             }
