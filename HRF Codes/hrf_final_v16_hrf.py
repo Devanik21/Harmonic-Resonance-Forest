@@ -2376,7 +2376,7 @@ print(f"   Training Set: {len(X_train)} | Test Set: {len(X_test)}\n")
 # --- 3. THE FINAL BATTLE ---
 models = {
     "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42),
-    "XGBoost": XGBClassifier(n_estimators=100, eval_metric='logloss', use_label_encoder=False),
+    "XGBoost": XGBClassifier(n_estimators=100, eval_metric='logloss'),
     " HRF v7.2 (Professional)": HarmonicResonanceForest(n_estimators=50)
 }
 
@@ -2566,7 +2566,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_
 # --- 3. THE FINAL BATTLE ---
 models = {
     "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42),
-    "XGBoost": XGBClassifier(n_estimators=100, eval_metric='logloss', use_label_encoder=False),
+    "XGBoost": XGBClassifier(n_estimators=100, eval_metric='logloss'),
     " HRF v10.0 (Self-Evolving)": HarmonicResonanceForest_v10(n_estimators=50)
 }
 
@@ -2774,7 +2774,7 @@ models = {
 # Try importing real XGB
 try:
     from xgboost import XGBClassifier
-    models["XGBoost"] = XGBClassifier(n_estimators=100, eval_metric='logloss', use_label_encoder=False)
+    models["XGBoost"] = XGBClassifier(n_estimators=100, eval_metric='logloss')
 except: pass
 
 results = {}
@@ -3083,7 +3083,7 @@ models = {
 # Try importing real XGB
 try:
     from xgboost import XGBClassifier
-    models["XGBoost"] = XGBClassifier(n_estimators=100, eval_metric='logloss', use_label_encoder=False)
+    models["XGBoost"] = XGBClassifier(n_estimators=100, eval_metric='logloss')
 except: pass
 
 results = {}
@@ -3584,7 +3584,7 @@ models = [
 # Try importing real XGB
 try:
     from xgboost import XGBClassifier
-    models[2] = ("XGBoost", XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42))
+    models[2] = ("XGBoost", XGBClassifier(eval_metric='logloss', random_state=42))
 except:
     models[2] = ("XGBoost", RandomForestClassifier()) # Fallback
 
@@ -3843,7 +3843,7 @@ models = [
 
 try:
     from xgboost import XGBClassifier
-    models[2] = ("XGBoost", XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42))
+    models[2] = ("XGBoost", XGBClassifier(eval_metric='logloss', random_state=42))
 except:
     models[2] = ("XGBoost", RandomForestClassifier())
 

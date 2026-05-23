@@ -396,12 +396,12 @@ class HarmonicResonanceClassifier_BEAST_16D(BaseEstimator, ClassifierMixin):
         # 4. GRADIENT ALPHA (The Sniper - XGBoost Deep)
         self.unit_04 = XGBClassifier(n_estimators=500, max_depth=6, learning_rate=0.02,
                                      subsample=0.8, colsample_bytree=0.8,
-                                     use_label_encoder=False, eval_metric='logloss',
+                                     eval_metric='logloss',
                                      tree_method='hist', n_jobs=-1, random_state=42)
 
         # 5. GRADIENT BETA (The Nuke - XGBoost Fast)
         self.unit_05 = XGBClassifier(n_estimators=1000, max_depth=3, learning_rate=0.1,
-                                     use_label_encoder=False, eval_metric='logloss',
+                                     eval_metric='logloss',
                                      tree_method='hist', n_jobs=-1, random_state=42)
 
         # 6. KERNEL ALPHA (The Warp - NuSVC)
@@ -685,7 +685,6 @@ def run_comparative_benchmark(dataset_name, openml_id, sample_limit=3000, custom
         "XGBoost (GPU)": XGBClassifier(
             device='cuda',
             tree_method='hist',
-            use_label_encoder=False,
             eval_metric='logloss',
             random_state=42
         ),
