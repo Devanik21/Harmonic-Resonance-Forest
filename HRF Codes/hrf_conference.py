@@ -276,7 +276,7 @@ if __name__ == "__main__":
         # Optional: Add XGBoost if available
         try:
             from xgboost import XGBClassifier
-            models["XGBoost (SOTA)"] = XGBClassifier(n_estimators=100, eval_metric='logloss', use_label_encoder=False)
+            models["XGBoost (SOTA)"] = XGBClassifier(n_estimators=100, eval_metric='logloss')
         except ImportError:
             print("[WARN] XGBoost not found. Skipping comparison.")
 
@@ -481,7 +481,7 @@ def run_neural_perturbation_test():
 
     try:
         from xgboost import XGBClassifier
-        competitors["XGBoost"] = XGBClassifier(n_estimators=100, use_label_encoder=False, eval_metric='logloss')
+        competitors["XGBoost"] = XGBClassifier(n_estimators=100, eval_metric='logloss')
     except ImportError: pass
 
     print(f"\n{'Model Name':<30} | {'Accuracy':<10} | {'Status'}")
@@ -741,7 +741,7 @@ def run_survival_curve():
         # 5. XGBoost (Safe Import)
         try:
             from xgboost import XGBClassifier
-            xgb = XGBClassifier(n_estimators=50, use_label_encoder=False, eval_metric='logloss', verbosity=0)
+            xgb = XGBClassifier(n_estimators=50, eval_metric='logloss', verbosity=0)
             xgb.fit(X_train, y_train)
             s_xgb = accuracy_score(y_test, xgb.predict(X_test))
             history["XGBoost"].append(s_xgb)
