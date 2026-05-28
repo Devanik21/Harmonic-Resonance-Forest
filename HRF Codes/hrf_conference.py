@@ -38,6 +38,22 @@ from sklearn.neighbors import KNeighborsClassifier # Added KNN
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, euclidean_distances
 from sklearn.datasets import fetch_openml
+# Ensure repository root is on sys.path so top-level imports work when
+# executing this script from inside the `HRF Codes/` folder.
+import os
+import sys
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
+# Optional HRF extensions (now imported from repo root)
+from hrf_kernels import make_sigmoid_svc
+from wavelet_resonance import WaveletResonanceTransformer
+from hrf_config import (
+    ENABLE_SIGMOID_KERNEL,
+    ENABLE_WAVELET_RESONANCE,
+)
 
 # Suppress minor warnings for cleaner output
 warnings.filterwarnings('ignore')
@@ -479,6 +495,14 @@ def run_neural_perturbation_test():
         "HRF v12.5 (Spectral)": HarmonicResonanceForest(n_estimators=50)
     }
 
+    # Optionally register sigmoid kernel variant into the benchmark
+    if ENABLE_SIGMOID_KERNEL:
+        try:
+            competitors["SVM (Sigmoid)"] = make_sigmoid_svc()
+        except Exception:
+            # If creation fails, skip gracefully
+            pass
+
     try:
         from xgboost import XGBClassifier
         competitors["XGBoost"] = XGBClassifier(n_estimators=100, eval_metric='logloss')
@@ -488,10 +512,18 @@ def run_neural_perturbation_test():
     print("-" * 60)
 
     results = {}
+    # Optional lightweight wavelet preprocessing instance
+    if ENABLE_WAVELET_RESONANCE:
+        transformer = WaveletResonanceTransformer()
+        X_train_trans = transformer.fit_transform(X_train)
+        X_test_trans = transformer.transform(X_test)
+    else:
+        X_train_trans, X_test_trans = X_train, X_test
+
     for name, model in competitors.items():
         try:
-            model.fit(X_train, y_train)
-            acc = accuracy_score(y_test, model.predict(X_test))
+            model.fit(X_train_trans, y_train)
+            acc = accuracy_score(y_test, model.predict(X_test_trans))
             results[name] = acc
             status = "Excellent" if acc > 0.95 else "Solid" if acc > 0.75 else "Fails"
             print(f"{name:<30} | {acc:.2%}     | {status}")
@@ -727,9 +759,27 @@ def run_survival_curve():
         history["Random Forest"].append(s_rf)
 
         # 3. SVM
+        # Optionally apply wavelet preprocessing for all competitors
+        if ENABLE_WAVELET_RESONANCE:
+            transformer = WaveletResonanceTransformer()
+            X_train_used = transformer.fit_transform(X_train)
+            X_test_used = transformer.transform(X_test)
+        else:
+            X_train_used, X_test_used = X_train, X_test
+
         svm = SVC(kernel='rbf', C=1.0)
-        svm.fit(X_train, y_train)
-        s_svm = accuracy_score(y_test, svm.predict(X_test))
+        svm.fit(X_train_used, y_train)
+        s_svm = accuracy_score(y_test, svm.predict(X_test_used))
+
+        # Optional sigmoid variant evaluation
+        if ENABLE_SIGMOID_KERNEL:
+            try:
+                svm_sig = make_sigmoid_svc()
+                svm_sig.fit(X_train_used, y_train)
+                s_svm_sig = accuracy_score(y_test, svm_sig.predict(X_test_used))
+                history.setdefault('SVM (Sigmoid)', []).append(s_svm_sig)
+            except Exception:
+                pass
         history["SVM (RBF)"].append(s_svm)
 
         # 4. KNN
