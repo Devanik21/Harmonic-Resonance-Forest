@@ -23,8 +23,9 @@ class WaveletResonanceTransformer(BaseEstimator, TransformerMixin):
     """
 
     def __init__(self, wavelet=None, level=None):
-        self.wavelet = wavelet or WAVELET_DEFAULTS['wavelet']
-        self.level = level if level is not None else WAVELET_DEFAULTS['level']
+        # Store parameters directly for sklearn API compliance
+        self.wavelet = wavelet
+        self.level = level
 
     def fit(self, X, y=None):
         return self
@@ -41,22 +42,12 @@ class WaveletResonanceTransformer(BaseEstimator, TransformerMixin):
         if X.ndim != 2:
             raise ValueError('X must be 2D: (n_samples, n_features)')
 
-        out = []
-        for i in range(X.shape[0]):
-            sig = X[i]
-            # perform single-level DWT (approx, detail)
-            coeffs = pywt.wavedec(sig, self.wavelet, level=self.level)
-            # flatten and concatenate coefficients (keeps representation small)
-            flat = np.concatenate([c.ravel() for c in coeffs])
-            out.append(flat)
+        # Resolve defaults from config if not provided
+        wavelet = self.wavelet or WAVELET_DEFAULTS['wavelet']
+        level = self.level if self.level is not None else WAVELET_DEFAULTS['level']
 
-        # Pad/truncate to keep a consistent width: choose the median length
-        lengths = [len(r) for r in out]
-        target = int(np.median(lengths)) if lengths else 0
-        arr = np.zeros((len(out), target), dtype=float)
-        for i, r in enumerate(out):
-            if len(r) >= target:
-                arr[i] = r[:target]
-            else:
-                arr[i, : len(r)] = r
-        return arr
+        # Vectorized DWT: apply to all rows at once
+        # pywt.wavedec performs DWT decomposition and returns coefficients
+        coeffs = pywt.wavedec(X, wavelet, level=level, axis=-1)
+        # Concatenate coefficients along feature axis for all samples at once
+        return np.concatenate(coeffs, axis=-1).astype(np.float64)

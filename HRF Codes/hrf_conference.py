@@ -779,7 +779,8 @@ def run_survival_curve():
                 s_svm_sig = accuracy_score(y_test, svm_sig.predict(X_test_used))
                 history.setdefault('SVM (Sigmoid)', []).append(s_svm_sig)
             except Exception:
-                pass
+                # Append 0.0 to keep history lengths aligned and prevent plotting crashes
+                history.setdefault('SVM (Sigmoid)', []).append(0.0)
         history["SVM (RBF)"].append(s_svm)
 
         # 4. KNN
