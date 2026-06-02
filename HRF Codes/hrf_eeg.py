@@ -81,7 +81,7 @@ class HighEnergySoul_GPU(BaseEstimator, ClassifierMixin):
         if not isinstance(X, cp.ndarray): X = cp.asarray(X, dtype=cp.float32)
         if not isinstance(y, cp.ndarray): y = cp.asarray(y, dtype=cp.int32)
 
-        self.classes_gpu_ = cp.unique(y)
+        self.classes_gpu = cp.unique(y)
 
         # 1. Scale on GPU
         X_scaled = self.scaler_.fit_transform(X)
@@ -102,21 +102,34 @@ class HighEnergySoul_GPU(BaseEstimator, ClassifierMixin):
         X_scaled = self.scaler_.transform(X)
         X_encoded = apply_bipolar_montage_gpu(X_scaled)
 
-        # 2. Get Neighbors
-        dists, indices = self.knn_engine_.kneighbors(X_encoded)
-
-        # 3. RESONANCE EQUATION (exp(-gamma * d^p) * (1 + cos(freq * d)))
-        w = cp.exp(-self.gamma * (dists ** self.p_metric)) * (1.0 + cp.cos(self.freq * dists))
-
-        # 4. Aggregate Energy (Voting)
-        neighbor_labels = self.y_train_gpu_[indices]
         n_samples = X.shape[0]
         n_classes = len(self.classes_gpu_)
         energies = cp.zeros((n_samples, n_classes), dtype=cp.float32)
 
-        for idx, cls in enumerate(self.classes_gpu_):
-            mask = (neighbor_labels == cls)
-            energies[:, idx] = cp.sum(w * mask, axis=1)
+        # --- GSSOC FIX: OPTIMIZED CHUNKED BATCH PROCESSING ENGINE ---
+        # Evaluates distance matrices sequentially to preserve hardware memory limits
+        chunk_size = 4000  
+        
+        for i in range(0, n_samples, chunk_size):
+            end_idx = min(i + chunk_size, n_samples)
+            X_chunk = X_encoded[i:end_idx]
+
+            # 2. Get Neighbors for this chunk only
+            dists_chunk, indices_chunk = self.knn_engine_.kneighbors(X_chunk)
+
+            # 3. RESONANCE EQUATION calculated safely per block
+            w_chunk = cp.exp(-self.gamma * (dists_chunk ** self.p_metric)) * (1.0 + cp.cos(self.freq * dists_chunk))
+
+            # 4. Aggregate Energy (Voting) for this chunk
+            neighbor_labels_chunk = self.y_train_gpu_[indices_chunk]
+            
+            for idx, cls in enumerate(self.classes_gpu_):
+                mask = (neighbor_labels_chunk == cls)
+                energies[i:end_idx, idx] = cp.sum(w_chunk * mask, axis=1)
+
+            # CRITICAL: Reclaim memory out of cache allocations mid-loop
+            cp.get_default_memory_pool().free_all_blocks()
+        # -----------------------------------------------------------
 
         preds_idx = cp.argmax(energies, axis=1)
         return self.classes_gpu_[preds_idx]
@@ -157,55 +170,55 @@ def run_soul_showcase_gpu(data_id=1471):
         HighEnergySoul_GPU("SOUL-DELTA (High)",   freq=50.0, gamma=10.0, p=2.5),
         HighEnergySoul_GPU("SOUL-EPSILON (Ult)",  freq=90.0, gamma=20.0, p=2.8),
         HighEnergySoul_GPU("SOUL-06 (Calm)",      freq=5.0,   gamma=0.1,  p=2.0),
-    HighEnergySoul_GPU("SOUL-07 (Steady)",    freq=8.2,   gamma=0.4,  p=2.0),
-    HighEnergySoul_GPU("SOUL-08 (Root)",      freq=12.5,  gamma=0.8,  p=2.1),
-    HighEnergySoul_GPU("SOUL-09 (Flow)",      freq=15.0,  gamma=1.2,  p=2.1),
-    HighEnergySoul_GPU("SOUL-10 (Foundation)",freq=18.0,  gamma=2.0,  p=2.2),
-    HighEnergySoul_GPU("SOUL-11 (Anchor)",    freq=20.5,  gamma=3.5,  p=2.2),
-    HighEnergySoul_GPU("SOUL-12 (Pillar)",    freq=22.0,  gamma=4.2,  p=2.3),
-    HighEnergySoul_GPU("SOUL-13 (Solid)",     freq=24.5,  gamma=5.0,  p=2.3),
-    HighEnergySoul_GPU("SOUL-14 (Core)",      freq=26.0,  gamma=6.0,  p=2.4),
-    HighEnergySoul_GPU("SOUL-15 (Grounded)",  freq=28.5,  gamma=7.0,  p=2.4),
+        HighEnergySoul_GPU("SOUL-07 (Steady)",    freq=8.2,   gamma=0.4,  p=2.0),
+        HighEnergySoul_GPU("SOUL-08 (Root)",      freq=12.5,  gamma=0.8,  p=2.1),
+        HighEnergySoul_GPU("SOUL-09 (Flow)",      freq=15.0,  gamma=1.2,  p=2.1),
+        HighEnergySoul_GPU("SOUL-10 (Foundation)",freq=18.0,  gamma=2.0,  p=2.2),
+        HighEnergySoul_GPU("SOUL-11 (Anchor)",    freq=20.5,  gamma=3.5,  p=2.2),
+        HighEnergySoul_GPU("SOUL-12 (Pillar)",    freq=22.0,  gamma=4.2,  p=2.3),
+        HighEnergySoul_GPU("SOUL-13 (Solid)",     freq=24.5,  gamma=5.0,  p=2.3),
+        HighEnergySoul_GPU("SOUL-14 (Core)",      freq=26.0,  gamma=6.0,  p=2.4),
+        HighEnergySoul_GPU("SOUL-15 (Grounded)",  freq=28.5,  gamma=7.0,  p=2.4),
         HighEnergySoul_GPU("SOUL-16 (Edge)",      freq=31.0,  gamma=4.5,  p=2.6),
-    HighEnergySoul_GPU("SOUL-17 (Blade)",     freq=33.5,  gamma=5.5,  p=2.6),
-    HighEnergySoul_GPU("SOUL-18 (Prism)",     freq=36.0,  gamma=6.5,  p=2.7),
-    HighEnergySoul_GPU("SOUL-19 (Needle)",    freq=38.5,  gamma=8.0,  p=2.7),
-    HighEnergySoul_GPU("SOUL-20 (Vertex)",    freq=41.0,  gamma=9.5,  p=2.8),
-    HighEnergySoul_GPU("SOUL-21 (Crystal)",   freq=43.5,  gamma=11.0, p=2.8),
-    HighEnergySoul_GPU("SOUL-22 (Quartz)",    freq=45.0,  gamma=12.5, p=2.9),
-    HighEnergySoul_GPU("SOUL-23 (Diamond)",   freq=47.5,  gamma=14.0, p=3.0),
-    HighEnergySoul_GPU("SOUL-24 (Obsidian)",  freq=49.0,  gamma=15.5, p=3.1),
-    HighEnergySoul_GPU("SOUL-25 (Laser)",     freq=52.0,  gamma=17.0, p=3.2),
+        HighEnergySoul_GPU("SOUL-17 (Blade)",     freq=33.5,  gamma=5.5,  p=2.6),
+        HighEnergySoul_GPU("SOUL-18 (Prism)",     freq=36.0,  gamma=6.5,  p=2.7),
+        HighEnergySoul_GPU("SOUL-19 (Needle)",    freq=38.5,  gamma=8.0,  p=2.7),
+        HighEnergySoul_GPU("SOUL-20 (Vertex)",    freq=41.0,  gamma=9.5,  p=2.8),
+        HighEnergySoul_GPU("SOUL-21 (Crystal)",   freq=43.5,  gamma=11.0, p=2.8),
+        HighEnergySoul_GPU("SOUL-22 (Quartz)",    freq=45.0,  gamma=12.5, p=2.9),
+        HighEnergySoul_GPU("SOUL-23 (Diamond)",   freq=47.5,  gamma=14.0, p=3.0),
+        HighEnergySoul_GPU("SOUL-24 (Obsidian)",  freq=49.0,  gamma=15.5, p=3.1),
+        HighEnergySoul_GPU("SOUL-25 (Laser)",     freq=52.0,  gamma=17.0, p=3.2),
         HighEnergySoul_GPU("SOUL-26 (Flash)",     freq=55.0,  gamma=5.0,  p=2.5),
-    HighEnergySoul_GPU("SOUL-27 (Spark)",     freq=58.5,  gamma=6.5,  p=2.5),
-    HighEnergySoul_GPU("SOUL-28 (Pulse)",     freq=61.0,  gamma=8.0,  p=2.5),
-    HighEnergySoul_GPU("SOUL-29 (Bolt)",      freq=64.5,  gamma=9.5,  p=2.5),
-    HighEnergySoul_GPU("SOUL-30 (Static)",    freq=67.0,  gamma=11.0, p=2.6),
-    HighEnergySoul_GPU("SOUL-31 (Current)",   freq=70.5,  gamma=12.5, p=2.6),
-    HighEnergySoul_GPU("SOUL-32 (Plasma)",    freq=73.0,  gamma=14.0, p=2.6),
-    HighEnergySoul_GPU("SOUL-33 (Ion)",       freq=76.5,  gamma=16.5, p=2.7),
-    HighEnergySoul_GPU("SOUL-34 (Storm)",     freq=79.0,  gamma=18.0, p=2.7),
-    HighEnergySoul_GPU("SOUL-35 (Thunder)",   freq=82.5,  gamma=20.0, p=2.7),
+        HighEnergySoul_GPU("SOUL-27 (Spark)",     freq=58.5,  gamma=6.5,  p=2.5),
+        HighEnergySoul_GPU("SOUL-28 (Pulse)",     freq=61.0,  gamma=8.0,  p=2.5),
+        HighEnergySoul_GPU("SOUL-29 (Bolt)",      freq=64.5,  gamma=9.5,  p=2.5),
+        HighEnergySoul_GPU("SOUL-30 (Static)",    freq=67.0,  gamma=11.0, p=2.6),
+        HighEnergySoul_GPU("SOUL-31 (Current)",   freq=70.5,  gamma=12.5, p=2.6),
+        HighEnergySoul_GPU("SOUL-32 (Plasma)",    freq=73.0,  gamma=14.0, p=2.6),
+        HighEnergySoul_GPU("SOUL-33 (Ion)",       freq=76.5,  gamma=16.5, p=2.7),
+        HighEnergySoul_GPU("SOUL-34 (Storm)",     freq=79.0,  gamma=18.0, p=2.7),
+        HighEnergySoul_GPU("SOUL-35 (Thunder)",   freq=82.5,  gamma=20.0, p=2.7),
         HighEnergySoul_GPU("SOUL-36 (Void)",      freq=85.0,  gamma=25.0, p=3.0),
-    HighEnergySoul_GPU("SOUL-37 (Null)",      freq=88.5,  gamma=30.0, p=3.1),
-    HighEnergySoul_GPU("SOUL-38 (Singular)",  freq=92.0,  gamma=35.0, p=3.2),
-    HighEnergySoul_GPU("SOUL-39 (Event)",     freq=95.5,  gamma=40.0, p=3.3),
-    HighEnergySoul_GPU("SOUL-40 (Horizon)",   freq=100.0, gamma=45.0, p=3.4),
-    HighEnergySoul_GPU("SOUL-41 (Planck)",    freq=105.0, gamma=50.0, p=3.5),
-    HighEnergySoul_GPU("SOUL-42 (String)",    freq=110.0, gamma=55.0, p=3.6),
-    HighEnergySoul_GPU("SOUL-43 (Quark)",     freq=115.0, gamma=60.0, p=3.7),
-    HighEnergySoul_GPU("SOUL-44 (Muon)",      freq=120.0, gamma=65.0, p=3.8),
-    HighEnergySoul_GPU("SOUL-45 (Gluon)",     freq=130.0, gamma=70.0, p=4.0),
+        HighEnergySoul_GPU("SOUL-37 (Null)",      freq=88.5,  gamma=30.0, p=3.1),
+        HighEnergySoul_GPU("SOUL-38 (Singular)",  freq=92.0,  gamma=35.0, p=3.2),
+        HighEnergySoul_GPU("SOUL-39 (Event)",     freq=95.5,  gamma=40.0, p=3.3),
+        HighEnergySoul_GPU("SOUL-40 (Horizon)",   freq=100.0, gamma=45.0, p=3.4),
+        HighEnergySoul_GPU("SOUL-41 (Planck)",    freq=105.0, gamma=50.0, p=3.5),
+        HighEnergySoul_GPU("SOUL-42 (String)",    freq=110.0, gamma=55.0, p=3.6),
+        HighEnergySoul_GPU("SOUL-43 (Quark)",     freq=115.0, gamma=60.0, p=3.7),
+        HighEnergySoul_GPU("SOUL-44 (Muon)",      freq=120.0, gamma=65.0, p=3.8),
+        HighEnergySoul_GPU("SOUL-45 (Gluon)",     freq=130.0, gamma=70.0, p=4.0),
         HighEnergySoul_GPU("SOUL-46 (Ghost)",     freq=10.0,  gamma=50.0, p=2.0),
-    HighEnergySoul_GPU("SOUL-47 (Phantom)",   freq=15.0,  gamma=40.0, p=2.2),
-    HighEnergySoul_GPU("SOUL-48 (Shadow)",    freq=137.5, gamma=1.0,  p=2.5), # Golden Angle Freq
-    HighEnergySoul_GPU("SOUL-49 (Echo)",      freq=137.5, gamma=5.0,  p=2.5),
-    HighEnergySoul_GPU("SOUL-50 (Mirage)",    freq=200.0, gamma=10.0, p=3.0),
-    HighEnergySoul_GPU("SOUL-51 (Vortex)",    freq=5.0,   gamma=100.0,p=4.0),
-    HighEnergySoul_GPU("SOUL-52 (Aura)",      freq=42.0,  gamma=42.0, p=2.0),
-    HighEnergySoul_GPU("SOUL-53 (Zenith)",    freq=314.1, gamma=3.14, p=3.14),# Pi Resonance
-    HighEnergySoul_GPU("SOUL-54 (Phi)",       freq=161.8, gamma=1.61, p=1.61),# Golden Ratio
-    HighEnergySoul_GPU("SOUL-55 (Omega)",     freq=500.0, gamma=100.0,p=5.0) # Absolute Sniper
+        HighEnergySoul_GPU("SOUL-47 (Phantom)",   freq=15.0,  gamma=40.0, p=2.2),
+        HighEnergySoul_GPU("SOUL-48 (Shadow)",    freq=137.5, gamma=1.0,  p=2.5), # Golden Angle Freq
+        HighEnergySoul_GPU("SOUL-49 (Echo)",      freq=137.5, gamma=5.0,  p=2.5),
+        HighEnergySoul_GPU("SOUL-50 (Mirage)",    freq=200.0, gamma=10.0, p=3.0),
+        HighEnergySoul_GPU("SOUL-51 (Vortex)",    freq=5.0,   gamma=100.0,p=4.0),
+        HighEnergySoul_GPU("SOUL-52 (Aura)",      freq=42.0,  gamma=42.0, p=2.0),
+        HighEnergySoul_GPU("SOUL-53 (Zenith)",    freq=314.1, gamma=3.14, p=3.14),# Pi Resonance
+        HighEnergySoul_GPU("SOUL-54 (Phi)",       freq=161.8, gamma=1.61, p=1.61),# Golden Ratio
+        HighEnergySoul_GPU("SOUL-55 (Omega)",     freq=500.0, gamma=100.0,p=5.0) # Absolute Sniper
     ]
 
     print("\n" + "="*75)
@@ -238,9 +251,6 @@ def run_soul_showcase_gpu(data_id=1471):
     print(f" > ANALYSIS: Identifying Elite Souls from Census (Total: {len(souls)})...")
 
     soul_results = []
-    # soul_preds_cpu is already populated from the previous loop if we want to reuse it
-    # But for clarity and consistency with `soul.fit` logic, let's re-run predictions here for `soul_results`
-
     for soul in souls:
         # 1. Fit on Full Training Data (No Bagging/Subsampling to preserve precision)
         soul.fit(X_tr_c, y_tr_c)
@@ -254,10 +264,7 @@ def run_soul_showcase_gpu(data_id=1471):
         # 3. Store for the Chorus
         soul_results.append({"name": soul.name, "score": acc, "preds": preds_cpu})
 
-        # Optional: Print progress for first 5 and last 5 to keep console clean
-        # or just print them all if you prefer the full scroll
         status = "LEADER" if acc > 0.98 else "Active"
-        # print(f" {soul.name:<20} | {acc:.4%} | {status}")
 
     # Sort results to find the champions
     soul_results.sort(key=lambda x: x['score'], reverse=True)
@@ -265,11 +272,10 @@ def run_soul_showcase_gpu(data_id=1471):
     print("\n >>> TOP 5 INDIVIDUAL ELITES FOUND <<<")
     for i in range(5):
         champion = soul_results[i]
-        print(f"   Rank {i+1}: {champion['name']:<20} | {champion['score']:.4%}")
+        print(f"    Rank {i+1}: {champion['name']:<20} | {champion['score']:.4%}")
     print("-" * 75)
 
-    # F. THE \"CHORUS OF TITANS\" (Weighted Convergence)
-    # Objective: Merge the top 7 experts to eliminate individual outliers
+    # F. THE "CHORUS OF TITANS" (Weighted Convergence)
     print(" > INITIATING CHORUS OF TITANS: Harmonic Convergence of Top 7 Elites...")
 
     top_7 = soul_results[:7]
@@ -277,7 +283,6 @@ def run_soul_showcase_gpu(data_id=1471):
     n_classes = len(np.unique(y_te_c))
 
     # We use exponential weighting: Rank 1 gets much more 'voice' than Rank 7
-    # Weight = exp(accuracy * sensitivity)
     weights = [np.exp(res['score'] * 15) for res in top_7]
 
     # Prepare the voting matrix
@@ -288,7 +293,6 @@ def run_soul_showcase_gpu(data_id=1471):
         sample_votes = [res['preds'][i] for res in top_7]
 
         # Use bincount with weights to find the winner of the resonance
-        # This ensures that even if Rank 1 is wrong, if the other 6 agree, they override.
         vote_tally = np.bincount(sample_votes, weights=weights, minlength=n_classes)
         final_chorus_votes[i] = np.argmax(vote_tally)
 
@@ -312,7 +316,6 @@ def run_soul_showcase_gpu(data_id=1471):
     gs = fig.add_gridspec(3, 3, hspace=0.4, wspace=0.3)
 
     # --- ROW 1: THE OLD WORLD (Benchmarks) ---
-    # We re-predict using the fitted models in 'competitors' list
     for i, (name, model) in enumerate(competitors):
         if i >= 3: break # Limit to first 3 benchmarks to fit grid
 
@@ -327,13 +330,11 @@ def run_soul_showcase_gpu(data_id=1471):
         ax.set_ylabel("True Label") if i == 0 else None
 
     # --- ROW 2: THE NEW GODS (Top 3 Souls) ---
-    # Take the top 3 from your sorted results
     top_3_souls = soul_results[:3]
 
     for i, res in enumerate(top_3_souls):
         ax = fig.add_subplot(gs[1, i])
         cm = confusion_matrix(y_te_c, res['preds'])
-        # A glowing purple/blue map for the Souls
         sns.heatmap(cm, annot=True, fmt='d', cmap='Purples', cbar=False, ax=ax)
         ax.set_title(f"ELITE SOUL: {res['name']}\nAcc: {res['score']:.2%}", fontsize=12, color='darkblue', fontweight='bold')
         ax.set_ylabel("True Label") if i == 0 else None
@@ -442,7 +443,6 @@ plt.grid(axis='x', linestyle='--', alpha=0.5)
 for bar in bars:
     width = bar.get_width()
     label_x_pos = width + 0.1
-    # Make the text bold for the Chorus and Top Souls
     weight = 'bold' if width > 98.0 else 'normal'
     plt.text(label_x_pos, bar.get_y() + bar.get_height()/2, f'{width:.4f}%',
              va='center', fontsize=11, fontweight=weight)
@@ -457,4 +457,3 @@ plt.legend(handles=legend_elements, loc='lower right', fontsize=11)
 
 plt.tight_layout()
 plt.show()
-
