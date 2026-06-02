@@ -1,0 +1,25 @@
+name: Research Task
+description: Propose a new research direction or experiment
+labels: ["research", "advanced", "gssoc-2026"]
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Research Objective
+      description: Describe the goal of this research task.
+    validations:
+      required: true
+  - type: textarea
+    id: methodology
+    attributes:
+      label: Proposed Methodology
+      description: How do you plan to approach this research task?
+    validations:
+      required: true
+  - type: textarea
+    id: expected-outcome
+    attributes:
+      label: Expected Outcome
+      description: What are the expected results or deliverables?
+    validations:
+      required: true

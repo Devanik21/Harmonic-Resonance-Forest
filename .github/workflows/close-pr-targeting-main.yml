@@ -1,0 +1,89 @@
+name: Enforce contribution branch policy
+
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to check and close if it targets main"
+        required: true
+        type: string
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+env:
+  CONTRIBUTION_BRANCH: gssoc-26
+
+jobs:
+  enforce-branch-policy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve PR number
+        id: pr
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment and close if targeting main
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          CONTRIBUTION_BRANCH: ${{ env.CONTRIBUTION_BRANCH }}
+        with:
+          script: |
+            const prNumber = parseInt(process.env.PR_NUMBER, 10);
+
+            if (Number.isNaN(prNumber)) {
+              core.setFailed("Invalid PR number.");
+              return;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            if (pr.base.ref !== "main") {
+              core.info(`PR #${prNumber} targets '${pr.base.ref}', so no action was taken.`);
+              return;
+            }
+
+            const body = [
+              "Thank you very much for the contribution.",
+              "",
+              `For this repository, community PRs should be opened against **${process.env.CONTRIBUTION_BRANCH}** rather than **main**.`,
+              "Please read **CONTRIBUTING.md** first, then create a fresh branch from the correct target branch and open a new PR there.",
+              "",
+              "I am closing this PR to keep the review process clean and consistent."
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body,
+            });
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              state: "closed",
+            });

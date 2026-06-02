@@ -11,6 +11,21 @@
 
 ⚠️ Project Status: This repository contains published research (DOI: 10.5281/zenodo.18173940). All contributions must pass rigorous testing to ensure the 98.84% accuracy benchmark is maintained. Please read CONTRIBUTING.md before opening an issue.
 
+
+---
+
+## 💖 GSSoC 2026 Contribution
+
+This project is part of **GirlScript Summer of Code 2026 (GSSoC'26)**.
+
+We welcome meaningful contributions across:
+- Documentation
+- Research validation
+- Code improvements
+
+> ⚠️ Note: This is a research-grade repository. All PRs must maintain scientific rigor and performance benchmarks.
+
+
 ---
 
 ##  Research Advancement
