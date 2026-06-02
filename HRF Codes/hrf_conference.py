@@ -788,7 +788,7 @@ def run_survival_curve():
             xgb.fit(X_train, y_train)
             s_xgb = accuracy_score(y_test, xgb.predict(X_test))
             history["XGBoost"].append(s_xgb)
-        except:
+        except Exception:
             s_xgb = 0.0
             history["XGBoost"].append(s_xgb)
         else:
