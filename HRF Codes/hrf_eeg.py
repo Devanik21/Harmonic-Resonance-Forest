@@ -81,7 +81,7 @@ class HighEnergySoul_GPU(BaseEstimator, ClassifierMixin):
         if not isinstance(X, cp.ndarray): X = cp.asarray(X, dtype=cp.float32)
         if not isinstance(y, cp.ndarray): y = cp.asarray(y, dtype=cp.int32)
 
-        self.classes_gpu = cp.unique(y)
+        self.classes_gpu_ = cp.unique(y)
 
         # 1. Scale on GPU
         X_scaled = self.scaler_.fit_transform(X)
