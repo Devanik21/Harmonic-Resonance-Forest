@@ -554,7 +554,7 @@ class HarmonicResonanceClassifier_BEAST_16D(BaseEstimator, ClassifierMixin):
 
         unit_names = [
             "unit_01", "unit_02", "unit_03", "unit_04", "unit_05",
-            "unit_06", "unit_07", "unit_15", "unit_16", "unit_07", "unit_08", "unit_09", "unit_10", "unit_11"
+            "unit_06", "unit_07", "unit_15", "unit_16", "unit_08", "unit_09", "unit_10", "unit_11"
         ]
         other_units = []
         for name in unit_names:
