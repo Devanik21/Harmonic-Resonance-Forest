@@ -16,6 +16,9 @@ import numpy as np
 import pandas as pd
 import warnings
 import random
+import numpy as np
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import ExtraTreesClassifier
 from xgboost import XGBClassifier
@@ -42,6 +45,60 @@ except ImportError:
     print("⚠️ GPU NOT FOUND: Running in Slow Mode")
 
 warnings.filterwarnings('ignore')
+
+class GoldenPhiUnit(BaseEstimator, ClassifierMixin):
+    """Unit 18 — Sector D: Maps features into a Golden Ratio scaling basis"""
+    def __init__(self, n_neighbors=5):
+        self.n_neighbors = n_neighbors
+        self.phi = (1 + 5 ** 0.5) / 2  # φ ≈ 1.618033
+        self.knn = KNeighborsClassifier(n_neighbors=self.n_neighbors)
+        
+    def fit(self, X, y):
+        X = np.asarray(X)
+        num_features = X.shape[1]
+        raw_weights = np.array([self.phi ** -k for k in range(num_features)])
+        self.feature_weights_ = raw_weights / np.sum(raw_weights)
+        
+        self.knn.fit(X * self.feature_weights_, y)
+        self.classes_ = self.knn.classes_
+        return self
+        
+    def predict_proba(self, X):
+        return self.knn.predict_proba(np.asarray(X) * self.feature_weights_)
+
+    def predict(self, X):
+        return self.knn.predict(np.asarray(X) * self.feature_weights_)
+
+
+class GravityPotentialUnit(BaseEstimator, ClassifierMixin):
+    """Unit 21 — Sector D: Models class boundaries using Newtonian Inverse-Square Law"""
+    def __init__(self, G=1.0, epsilon=1e-5):
+        self.G = G
+        self.epsilon = epsilon
+        
+    def fit(self, X, y):
+        self.X_train_ = np.asarray(X)
+        self.y_train_ = np.asarray(y)
+        self.classes_ = np.unique(y)
+        return self
+        
+    def predict_proba(self, X):
+        X = np.asarray(X)
+        probabilities = np.zeros((X.shape[0], len(self.classes_)))
+        
+        for i, x_test in enumerate(X):
+            distances = np.linalg.norm(self.X_train_ - x_test, axis=1)
+            potentials = self.G / (distances ** 2 + self.epsilon)
+            
+            for idx, c in enumerate(self.classes_):
+                probabilities[i, idx] = np.sum(potentials[self.y_train_ == c])
+                
+        row_sums = probabilities.sum(axis=1, keepdims=True)
+        return np.divide(probabilities, row_sums, out=np.zeros_like(probabilities), where=row_sums != 0)
+
+    def predict(self, X):
+        proba = self.predict_proba(X)
+        return self.classes_[np.argmax(proba, axis=1)]
 
 # --- 1. THE HOLOGRAPHIC SOUL (Unit 3 - Multiverse Edition) ---
 class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
@@ -260,11 +317,20 @@ class QuantumFieldUnit(BaseEstimator, ClassifierMixin):
         self.dna_ = {'gamma': 1.0, 'n_components': 100}
 
     def fit(self, X, y):
-        self.classes_ = np.unique(y)
-        self.rbf_feature_.set_params(gamma=self.dna_['gamma'], n_components=self.dna_['n_components'])
-        X_quantum = self.rbf_feature_.fit_transform(X)
-        self.classifier_.fit(X_quantum, y)
-        return self
+            # 1. Initialize an empty list at the start of fit()
+            self.failed_units_ = []
+            
+            # 2. Loop through your units safely
+            for idx, unit in enumerate(self.units):
+                try:
+                    # This is the original training line—leave it inside the try block
+                    unit.fit(X, y)
+                except Exception as e:
+                    # ✅ Record the broken unit's index and print/log the error
+                    print(f"Warning: Unit {idx} failed during training: {e}")
+                    self.failed_units_.append(idx)
+                    
+            return self
 
     def predict_proba(self, X):
         X_quantum = self.rbf_feature_.transform(X)
