@@ -15,7 +15,6 @@ Increase gen for Stability and accuracy.
 import numpy as np
 import pandas as pd
 import warnings
-import random
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import ExtraTreesClassifier
 from xgboost import XGBClassifier
@@ -31,6 +30,7 @@ from sklearn.metrics import log_loss, accuracy_score
 from scipy.optimize import minimize
 from scipy.fft import fft
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.utils import check_random_state
 
 # GPU CHECK
 try:
@@ -45,12 +45,23 @@ warnings.filterwarnings('ignore')
 
 # --- 1. THE HOLOGRAPHIC SOUL (Unit 3 - Multiverse Edition) ---
 class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
-    def __init__(self, k=15):
+    def __init__(self, k=15, random_state=None, freq=2.0, gamma=0.5,
+                 power=2.0, p=2.0, phase=0.0, dim_reduction='none'):
         self.k = k
+        self.random_state = random_state
+        self.freq = freq
+        self.gamma = gamma
+        self.power = power
+        self.p = p
+        self.phase = phase
+        self.dim_reduction = dim_reduction
+        # dna_ is built from constructor args so get_params()/clone()/Pipeline all work.
+        # evolve() updates dna_ in-place (it is a learned attribute, trailing underscore).
+        # Constructor params stay frozen — they represent the *initial* configuration.
         self.dna_ = {
-            'freq': 2.0, 'gamma': 0.5, 'power': 2.0,
-            'metric': 'minkowski', 'p': 2.0,
-            'phase': 0.0, 'dim_reduction': 'none'
+            'freq': freq, 'gamma': gamma, 'power': power,
+            'metric': 'minkowski', 'p': p,
+            'phase': phase, 'dim_reduction': dim_reduction
         }
         self.projector_ = None
         self.X_raw_source_ = None
@@ -75,6 +86,13 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         self._apply_projection(X)
         self.y_train_ = y
         return self
+    
+    def fit ( self , X , y ): 
+            self . classes_ = np . unique ( y ) 
+            self . _apply_projection ( X ) 
+            self . y_train_ = y 
+            return self
+
 
     def _apply_projection(self, X):
         if self.dna_['dim_reduction'] == 'holo':
@@ -94,6 +112,10 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         self.X_raw_source_ = X
 
     def evolve(self, X_val, y_val, generations=1000):
+        # check_random_state handles None (non-deterministic), int (seed),
+        # and RandomState instances — fully sklearn-compatible.
+        rng = check_random_state(self.random_state)
+
         n_universes = 10
         best_acc = self.score(X_val, y_val)
         best_dna = self.dna_.copy()
@@ -109,17 +131,34 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         if median_dist > 0:
             best_dna['freq'] = 3.14159 / median_dist
 
+        # Pre-define choice arrays once outside the loop.
+        # 'metric' is intentionally excluded — it is never a mutable trait
+        # and including it (as the original code did) silently wasted candidates.
+        _MUTABLE_TRAITS = ['freq', 'gamma', 'power', 'p', 'phase', 'dim_reduction']
+        _POWER_VALUES   = np.array([0.5, 1.0, 2.0, 3.0, 4.0, 6.0])
+        _DIM_OPTIONS    = np.array(['none', 'holo', 'pca'])
+
         for i in range(generations):
             candidates = []
             for _ in range(n_universes):
                 mutant = best_dna.copy()
-                trait = random.choice(list(mutant.keys()))
-                if trait == 'freq': mutant['freq'] *= np.random.uniform(0.8, 1.25)
-                elif trait == 'gamma': mutant['gamma'] = np.random.uniform(0.1, 5.0)
-                elif trait == 'power': mutant['power'] = random.choice([0.5, 1.0, 2.0, 3.0, 4.0, 6.0])
-                elif trait == 'p': mutant['p'] = np.clip(mutant['p'] + np.random.uniform(-0.5, 0.5), 0.5, 8.0)
-                elif trait == 'phase': mutant['phase'] = np.random.uniform(0, 3.14159)
-                elif trait == 'dim_reduction': mutant['dim_reduction'] = random.choice(['none', 'holo', 'pca'])
+                trait = rng.choice(_MUTABLE_TRAITS)
+
+                if trait == 'freq':
+                    mutant['freq'] *= rng.uniform(0.8, 1.25)
+                elif trait == 'gamma':
+                    mutant['gamma'] = rng.uniform(0.1, 5.0)
+                elif trait == 'power':
+                    # Explicit float cast — prevents numpy.float64 leaking into dna_
+                    mutant['power'] = float(rng.choice(_POWER_VALUES))
+                elif trait == 'p':
+                    mutant['p'] = float(np.clip(mutant['p'] + rng.uniform(-0.5, 0.5), 0.5, 8.0))
+                elif trait == 'phase':
+                    mutant['phase'] = rng.uniform(0, 3.14159)
+                elif trait == 'dim_reduction':
+                    # Explicit str cast — _apply_projection compares with == 'holo'/'pca'
+                    mutant['dim_reduction'] = str(rng.choice(_DIM_OPTIONS))
+
                 candidates.append(mutant)
 
             generation_best_acc = -1
@@ -217,9 +256,13 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
             end      = min(i + batch_size, n_test)
             batch_te = X_test[i:end]
 
+            diff  = np.abs(batch_te[:, None, :] - X_train[None, :, :])
+            dists = np.sum(diff ** p_norm, axis=2) ** (1.0 / p_norm)
+ gssoc-2026
             dists = np.empty((len(batch_te), len(X_train)), dtype=np.float32)
             for j, row in enumerate(batch_te):
                 dists[j] = np.sum(np.abs(X_train - row) ** p_norm, axis=1) ** (1.0 / p_norm)
+
 
             top_k_idx = np.argsort(dists, axis=1)[:, :self.k]
             row_idx   = np.arange(len(batch_te))[:, None]
@@ -242,6 +285,29 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
 
             probas.append(batch_probs)
 
+            # np.argpartition is O(N) vs np.argsort's O(NlogN) —
+            # we only need the k smallest distances, not full sorted order.
+            top_k_idx = np.argpartition(dists, self.k, axis=1)[:, :self.k]
+            row_idx   = np.arange(len(batch_te))[:, None]
+            top_dists = dists[row_idx, top_k_idx]
+            top_y     = y_train[top_k_idx]
+
+            cosine_term = 1.0 + np.cos(freq * top_dists + phase)
+            cosine_term = np.maximum(cosine_term, 0.0)
+            w = np.exp(-gamma * (top_dists ** 2)) * cosine_term
+            w = np.power(w, power)
+
+            batch_probs = np.zeros((len(batch_te), n_classes))
+            for c_idx, cls in enumerate(self.classes_):
+                class_mask = (top_y == cls)
+                batch_probs[:, c_idx] = np.sum(w * class_mask, axis=1)
+
+            total_energy = np.sum(batch_probs, axis=1, keepdims=True)
+            total_energy[total_energy == 0] = 1.0  # avoid division by zero
+            batch_probs /= total_energy
+
+            probas.append(batch_probs)
+            gssoc-2026
         return np.concatenate(probas)
  
     def predict(self, X):
@@ -259,12 +325,12 @@ class QuantumFieldUnit(BaseEstimator, ClassifierMixin):
         self.classes_ = None
         self.dna_ = {'gamma': 1.0, 'n_components': 100}
 
-    def fit(self, X, y):
-        self.classes_ = np.unique(y)
-        self.rbf_feature_.set_params(gamma=self.dna_['gamma'], n_components=self.dna_['n_components'])
-        X_quantum = self.rbf_feature_.fit_transform(X)
-        self.classifier_.fit(X_quantum, y)
-        return self
+    def fit (self, X, y ) :
+            self.classes_ = np.unique(y)
+            self.rbf_feature_.set_params(gamma=self.dna_['gamma'], n_components=self.dna_['n_components'])
+            X_quantum = self.rbf_feature_.fit_transform(X)
+            self.classifier_.fit(X_quantum, y)
+            return self
 
     def predict_proba(self, X):
         X_quantum = self.rbf_feature_.transform(X)
@@ -382,7 +448,6 @@ from sklearn.svm import NuSVC
 import numpy as np
 import pandas as pd
 import warnings
-import random
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
 from xgboost import XGBClassifier
@@ -400,6 +465,174 @@ from sklearn.metrics import log_loss, accuracy_score
 from sklearn.utils.validation import check_X_y
 from sklearn.model_selection import train_test_split
 from scipy.optimize import minimize
+
+# --- 7a. GOLDEN PHI UNIT (Sector D — Unit 15: Biological Spiral Mapping) ---
+class GoldenPhiUnit(BaseEstimator, ClassifierMixin):
+    """
+    Physics-inspired classifier using the Golden Ratio (φ = 1.618...) as a
+    feature importance prior before classification.
+
+    Biological signals — EEG, ECG, HRV — exhibit self-similar structure at
+    Fibonacci-spaced scales. GoldenPhiUnit encodes this by weighting feature
+    dimensions with a decreasing geometric sequence (ratio 1/φ), giving
+    exponentially more importance to early features (low-index channels)
+    which correspond to lower-frequency / higher-amplitude components.
+
+    The resulting φ-weighted space is then classified with a k-NN estimator,
+    keeping the unit interpretable and consistent with the Soul-unit ethos.
+
+    Architecture reference: Titan-26 Sector D, Unit 18.
+    """
+
+    PHI = (1.0 + np.sqrt(5.0)) / 2.0  # 1.6180339887...
+
+    def __init__(self, n_neighbors=7, random_state=None):
+        self.n_neighbors = n_neighbors
+        self.random_state = random_state
+
+    def _phi_weights(self, n_features):
+        """
+        Compute normalised φ^{-k} weights for k = 0, 1, ..., n_features-1.
+        Decreasing sequence: [1, 1/φ, 1/φ², ...] → normalised to sum = 1.
+        """
+        k = np.arange(n_features, dtype=np.float64)
+        w = self.PHI ** (-k)
+        return w / w.sum()
+
+    def _transform(self, X):
+        """Apply golden-ratio feature weighting."""
+        return X * self.phi_weights_
+
+    def fit(self, X, y):
+        from sklearn.utils.validation import check_X_y
+        X, y = check_X_y(X, y)
+        self.classes_ = np.unique(y)
+        self.n_features_in_ = X.shape[1]
+        self.phi_weights_ = self._phi_weights(self.n_features_in_)
+        self.clf_ = KNeighborsClassifier(
+            n_neighbors=self.n_neighbors,
+            metric='euclidean',
+            algorithm='auto',
+            n_jobs=-1,
+        )
+        self.clf_.fit(self._transform(X), y)
+        return self
+
+    def predict_proba(self, X):
+        check_is_fitted(self, 'clf_')
+        X = check_array(X)
+        return self.clf_.predict_proba(self._transform(X))
+
+    def predict(self, X):
+        check_is_fitted(self, 'clf_')
+        X = check_array(X)
+        return self.clf_.predict(self._transform(X))
+
+    def score(self, X, y):
+        return np.mean(self.predict(X) == y)
+
+
+# --- 7b. GRAVITY POTENTIAL UNIT (Sector D — Unit 21: Inverse-Square Law) ---
+class GravityPotentialUnit(BaseEstimator, ClassifierMixin):
+    """
+    Physics-inspired classifier using Newtonian gravitational potential
+    (softened inverse-square law) as the decision mechanism.
+
+    Each training point acts as a gravitational mass. A test point is
+    attracted to training points proportionally to 1 / (r² + ε), where r
+    is the Euclidean distance and ε (softening length) prevents singularities.
+    Class probabilities are derived from the total gravitational potential
+    exerted by each class's training points on the test point.
+
+    Biological relevance: neural firing patterns cluster in feature space.
+    Close same-class points exert strong attraction; distant or cross-class
+    points contribute weakly, producing soft, naturally-curved boundaries
+    that adapt to overlapping class distributions — a known challenge in
+    EEG classification.
+
+    Architecture reference: Titan-26 Sector D, Unit 21.
+    """
+
+    def __init__(self, softening=1e-2, batch_size=512, random_state=None):
+        """
+        Parameters
+        ----------
+        softening : float, default=1e-2
+            Softening length ε in 1/(r²+ε²). Prevents potential singularity
+            when a test point coincides exactly with a training point.
+            Analogous to Plummer softening in N-body simulations.
+        batch_size : int, default=512
+            Test samples processed per batch. Keeps (batch × n_train)
+            arrays memory-safe without sacrificing vectorisation.
+        """
+        self.softening = softening
+        self.batch_size = batch_size
+        self.random_state = random_state
+
+    def fit(self, X, y):
+        from sklearn.utils.validation import check_X_y
+        X, y = check_X_y(X, y)
+        self.classes_ = np.unique(y)
+        self.n_features_in_ = X.shape[1]
+        # Store per-class training matrices — avoids repeated boolean masking
+        # at inference time and makes predict_proba fully vectorised per class.
+        self.X_by_class_ = {
+            cls: X[y == cls].astype(np.float32)
+            for cls in self.classes_
+        }
+        return self
+
+    def _batch_potential(self, X_batch, X_class):
+        """
+        Compute total softened gravitational potential for one batch vs one class.
+
+        Shape: X_batch (B, d), X_class (N_c, d) → output (B,)
+
+        Uses row-wise loop over X_class chunks to keep memory at
+        O(B × chunk) rather than O(B × N_c × d) for large N_c.
+        """
+        B = len(X_batch)
+        potential = np.zeros(B, dtype=np.float64)
+        eps_sq = self.softening ** 2
+
+        chunk = 256
+        for start in range(0, len(X_class), chunk):
+            X_c = X_class[start : start + chunk]                  # (chunk, d)
+            diff = X_batch[:, None, :] - X_c[None, :, :]         # (B, chunk, d)
+            sq_dist = np.sum(diff ** 2, axis=2)                   # (B, chunk)
+            potential += (1.0 / (sq_dist + eps_sq)).sum(axis=1)   # (B,)
+
+        return potential
+
+    def predict_proba(self, X):
+        check_is_fitted(self, 'X_by_class_')
+        X = check_array(X).astype(np.float32)
+        n_samples = len(X)
+        n_classes = len(self.classes_)
+        proba = np.zeros((n_samples, n_classes), dtype=np.float64)
+
+        for i in range(0, n_samples, self.batch_size):
+            batch = X[i : i + self.batch_size]
+            for c_idx, cls in enumerate(self.classes_):
+                proba[i : i + len(batch), c_idx] = self._batch_potential(
+                    batch, self.X_by_class_[cls]
+                )
+
+        # Normalise rows to valid probability simplex
+        row_sums = proba.sum(axis=1, keepdims=True)
+        row_sums = np.where(row_sums == 0, 1.0, row_sums)
+        return proba / row_sums
+
+    def predict(self, X):
+        check_is_fitted(self, 'X_by_class_')
+        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+
+    def score(self, X, y):
+        return np.mean(self.predict(X) == y)
+
+
+# --- 7. THE TITAN-16 "BEAST MODE" (Extended with Sector D Physics Units) ---
+class HarmonicResonanceClassifier_BEAST_16D(BaseEstimator, ClassifierMixin):
 
 # --- 7. THE TITAN-14 "BEAST MODE" (Endgame Edition) ---
 class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
@@ -453,33 +686,62 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         # 11. RESONANCE (The Wave - Calibrated Linear)
         self.unit_11 = CalibratedClassifierCV(LinearSVC(C=0.5, dual=False, max_iter=5000), cv=5)
 
-        # --- THE SOULS (Now with Divergent Seeds for Independent Thought) ---
+        # --- THE SOULS (Truly Divergent Seeds for Independent Thought) ---
+        # DNA params passed via constructor so clone()/get_params()/Pipeline
+        # all work correctly — no post-init dna_ mutation needed.
 
-        # 12. THE HOLOGRAPHIC SOUL (The Original - Logic Seed)
-        self.unit_12 = HolographicSoulUnit(k=15) # Will evolve independently
+        # 12. THE HOLOGRAPHIC SOUL — Logic Seed
+        # Low frequency, tight boundary: favours crisp decision regions.
+        self.unit_12 = HolographicSoulUnit(
+            k=15, random_state=12,
+            freq=1.0, gamma=0.1, power=2.0,
+            p=2.0, phase=0.0, dim_reduction='none'
+        )
 
-        # 13. TWIN SOUL ALPHA (Mirror 1 - Chaos Seed)
-        self.unit_13 = HolographicSoulUnit(k=15) # Will evolve independently
+        # 13. TWIN SOUL ALPHA — Chaos Seed
+        # Full 2π cycle, loose gamma, holographic projection: wave/frequency explorer.
+        self.unit_13 = HolographicSoulUnit(
+            k=15, random_state=13,
+            freq=6.2832, gamma=2.0, power=3.0,
+            p=2.0, phase=1.5708, dim_reduction='holo'
+        )
 
-        # 14. TWIN SOUL BETA (Mirror 2 - Order Seed)
-        self.unit_14 = HolographicSoulUnit(k=15) # Will evolve independently
+        # 14. TWIN SOUL BETA — Order Seed
+        # π frequency, Manhattan norm, PCA projection: manifold/geometry explorer.
+        self.unit_14 = HolographicSoulUnit(
+            k=15, random_state=14,
+            freq=3.14159, gamma=0.5, power=1.0,
+            p=1.0, phase=0.7854, dim_reduction='pca'
+        )
+
+        # --- SECTOR D: MACRO-PHYSICAL LAYERS (Titan-26 Extension) ---
+
+        # 15. GOLDEN PHI (Biological Spiral Mapping — Unit 18 in Titan-26)
+        # φ-weighted feature space captures self-similar EEG/ECG signal structure.
+        self.unit_15 = GoldenPhiUnit(n_neighbors=7, random_state=42)
+
+        # 16. GRAVITY POTENTIAL (Inverse-Square Law Attraction — Unit 21 in Titan-26)
+        # Newtonian softened potential produces curved, physics-informed boundaries.
+        self.unit_16 = GravityPotentialUnit(softening=1e-2, batch_size=512, random_state=42)
 
 
     def fit(self, X, y):
-        # 1. Validation and Scaling
-        y = np.array(y).astype(int)
-        X, y = check_X_y(X, y)
-        self.classes_ = np.unique(y)
-        n_classes = len(self.classes_)
-
-        X_scaled = self.scaler_.fit_transform(X)
-
-        # 2. Split for INTERNAL EVOLUTION (The Self-Talk Phase)
-        # We need a validation set specifically so the Souls can learn what works.
-        X_evo_t, X_evo_v, y_evo_t, y_evo_v = train_test_split(
-            X_scaled, y, test_size=0.2, stratify=y, random_state=42
-        )
-
+            self.failed_units_ = []
+            # Create a list of all your sub-units to loop through them easily
+            units_list = [
+                self.unit_01, self.unit_02, self.unit_03, self.unit_04, self.unit_05,
+                self.unit_06, self.unit_07, self.unit_08, self.unit_09, self.unit_10,
+                self.unit_11, self.unit_12, self.unit_13, self.unit_14
+            ]
+            
+            for idx, unit in enumerate(units_list):
+                        try:
+                            unit.fit(X, y)
+                        except Exception as e:
+                            print(f"Warning: Unit {idx + 1} failed during training: {e}")
+                            self.failed_units_.append(idx + 1)
+                            
+                  
         if self.verbose:
             print("\n" + "!"*60)
             print(" >>> HARMONIC RESONANCE FOREST: BEAST MODE (14D) INITIATED <<<")
@@ -522,6 +784,8 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         other_units = [
             self.unit_01, self.unit_02, self.unit_03, self.unit_04,
             self.unit_05, self.unit_06, self.unit_07, self.unit_08,
+            self.unit_09, self.unit_10, self.unit_11,
+            self.unit_15, self.unit_16,   # Sector D physics units
             self.unit_09, self.unit_10, self.unit_11
         ]
 
@@ -561,7 +825,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
             w = np.abs(w)
             w = w / np.sum(w)
             final_p = np.zeros_like(preds_proba[0])
-            for k in range(14):
+            for k in range(len(preds_proba)):
                 final_p += w[k] * preds_proba[k]
             # We use LogLoss for smooth gradients, but print Accuracy
             ll = log_loss(y_evo_v, np.clip(final_p, 1e-15, 1-1e-15))
@@ -575,7 +839,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         res = minimize(
             loss_func,
             init_weights,
-            bounds=[(0.0, 1.0)] * 14,
+            bounds=[(0.0, 1.0)] * len(init_weights),
             constraints={'type': 'eq', 'fun': lambda w: 1 - sum(w)},
             method='SLSQP'
         )
@@ -585,6 +849,12 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         if self.verbose:
             print("-" * 50)
             print("   >>> THE COUNCIL WEIGHTS <<<")
+            names = [
+                "Logic-ET", "Logic-RF", "Logic-HG", "Grad-XG1", "Grad-XG2",
+                "Nu-Warp", "PolyKer", "Geom-K3", "Geom-K9", "Space-QDA",
+                "Resonance", "GoldenPhi", "Gravity",
+                "SOUL-EVO1", "SOUL-EVO2", "SOUL-EVO3",
+            ]
             names = ["Logic-ET", "Logic-RF", "Logic-HG", "Grad-XG1", "Grad-XG2", "Nu-Warp",
                      "PolyKer", "Geom-K3", "Geom-K9", "Space-QDA", "Resonance",
                      "SOUL-EVO1", "SOUL-EVO2", "SOUL-EVO3"]
@@ -619,6 +889,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
             self.unit_01, self.unit_02, self.unit_03, self.unit_04,
             self.unit_05, self.unit_06, self.unit_07, self.unit_08,
             self.unit_09, self.unit_10, self.unit_11,
+            self.unit_15, self.unit_16,    # Sector D physics units — must match fit() order
             self.unit_12, self.unit_13, self.unit_14
         ]
 
@@ -1049,4 +1320,3 @@ The Soul Unit is domain-specific. It is designed for **Periodic, Harmonic, and G
 ---
 *> "We do not seek to be the fastest. We seek to be the most true." — HRF Research Philosophy*
 """
-
