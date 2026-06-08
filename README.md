@@ -9,6 +9,7 @@
 
 ---
 
+
 ⚠️ Project Status: This repository contains published research (DOI: 10.5281/zenodo.18173940). All contributions must pass rigorous testing to ensure the 98.84% accuracy benchmark is maintained. Please read CONTRIBUTING.md before opening an issue.
 
 
@@ -28,6 +29,184 @@ We welcome meaningful contributions across:
 > ⚠️ gssoc-2026 branch is experimental and may contain unstable or incomplete implementations.
 > 
 > For stable benchmarks, always use main branch.
+
+# 💖 GirlScript Summer of Code (GSSoC 2026) This project is part of **GirlScript Summer of Code 2026 (GSSoC'26)**. ✔ Cleaner: 
+Documentation improvements Research validation Code optimization and refactoring Reproducibility enhancements
+ > ⚠️ Note:This repository contains research-grade implementations; maintain consistency with existing benchmarks. 
+ 
+  > ⚠️ gssoc-2026 branch is experimental and may contain unstable or incomplete implementations. 
+   > For stable benchmarks, always use main branch.
+   
+    ---
+
+## 🚀 Overview
+
+**Harmonic Resonance Fields (HRF)** is a novel machine learning framework that redefines classification as a **wave interference phenomenon** instead of traditional statistical pattern learning.
+
+It introduces a **26-dimensional unified architecture (Titan-26)** that integrates classical ML, geometric manifolds, harmonic wave theory, and physics-inspired optimization into a single cohesive system.
+
+HRF is designed for **robust biological signal processing**, particularly EEG-based brain state classification.
+
+---
+
+## 🧪 Key Achievements
+
+- ⚡ **98.84% accuracy** on EEG Eye State dataset (OpenML 1471)
+- 🧠 Physics-informed classification using harmonic resonance theory
+- 🌊 Titan-26 unified 26-dimensional architecture
+- 🔬 5-Fold Stratified Cross-Validation (±0.18% variance)
+- 📉 Strong robustness under temporal jitter & noise
+- 🧬 GPU acceleration using NVIDIA RAPIDS + CuPy
+- 🏥 Validated for medical-grade EEG signal classification
+
+---
+
+## 🏗️ System Architecture
+
+HRF is built on the **Titan-26 Manifold**, a unified 26-dimensional learning system combining:
+
+- Classical ensemble models (Random Forest, XGBoost, Extra Trees)
+- Geometric models (KNN, SVM, QDA)
+- Harmonic wave resonance units
+- Physics-inspired macro layers
+- Advanced residual correction systems
+
+👉 Full Architecture:
+- 📄 [`docs/01_architecture.md`](./docs/01_architecture.md)
+- 📜 [`docs/hrf_titan26_monograph.md`](./docs/hrf_titan_monograph.md)
+
+---
+
+## 🔁 End-to-End Pipeline
+
+The HRF pipeline transforms raw EEG signals into resonance-based predictions through multiple stages:
+
+- Signal preprocessing & normalization
+- Geometric–resonance transformation
+- Parallel model sector execution
+- Strategy-based ensemble routing
+- Council/Titan weighted voting
+- Residual correction layer
+
+👉 Full Pipeline:
+- 📄 [`docs/02_pipeline.md`](./docs/02_pipeline.md)
+
+---
+
+## 📐 Mathematical Foundation
+
+HRF is grounded in a physics-inspired formulation where each data point behaves like a damped harmonic oscillator:
+
+\[
+\Psi(x, p_i) = e^{-\gamma ||x - p_i||^2} \cdot \cos(\omega ||x - p_i|| + \varphi)
+\]
+
+This enables:
+- Phase-invariant classification
+- Spectral domain robustness
+- Nonlinear resonance-based decision boundaries
+
+👉 Full Theory:
+- 📄 [`docs/03_mathematical_framework.md`](./docs/03_mathematical_framework.md)
+
+---
+
+## 📊 Experimental Validation
+
+HRF has been evaluated across multiple phases of rigorous testing:
+
+- Phase I: Baseline EEG benchmarking
+- Phase II: Neural perturbation (jitter robustness)
+- Phase III: Survival curve under chaos
+- Stress Tests: Extreme signal degradation scenarios
+
+👉 Full Experiments:
+- 📁 [`docs/04_experiments/`](./docs/04_experiments/)
+
+---
+
+## 📈 Results & Benchmarks
+
+HRF consistently outperforms traditional ML models in EEG classification tasks.
+
+| Model | Accuracy |
+|------|----------|
+| HRF v15.0 | **98.84%** |
+| Extra Trees | 94.49% |
+| Random Forest | 93.09% |
+| XGBoost | 92.99% |
+
+👉 Full Benchmark Report:
+- 📄 [`docs/05_results_and_benchmarks.md`](./docs/05_results_and_benchmarks.md)
+
+👉 Metric Definitions:
+- 📄 [`docs/09_metric_definitions.md`](./docs/09_metric_definitions.md)
+---
+
+## 🧪 Ablation Studies
+
+HRF includes detailed ablation analysis of:
+- Resonance frequency contribution
+- Damping factor sensitivity
+- FFT transformation impact
+- Model sector importance
+
+👉 See:
+- 📄 [`docs/06_ablation_study.md`](./docs/06_ablation_study.md)
+
+---
+
+## 🏥 Clinical Validation
+
+HRF demonstrates medical-grade reliability for EEG-based classification:
+
+- High sensitivity and specificity
+- Low false alarm rate
+- Stable cross-subject generalization
+
+👉 Clinical Report:
+- 📄 [`docs/07_clinical_validation.md`](./docs/07_clinical_validation.md)
+
+---
+
+## 🧭 Project Structure
+
+```text
+.
+├── docs/
+│   ├── 00_overview.md
+│   ├── 01_architecture.md
+│   ├── 02_pipeline_overview.md
+│   ├── 03_mathematical_framework.md
+│   ├── 04_experiments/
+│   │   ├── phase_1.md
+│   │   ├── phase_2.md
+│   │   ├── phase_3.md
+│   │   └── stress_tests.md
+│   ├── 05_results_and_benchmarks.md
+│   ├── 06_ablation_study.md
+│   ├── 07_clinical_validation.md
+│   ├── 08_hrf_titan26_monograph.md
+│   ├── 09_metric_definitions.md
+│   └── images/
+│
+├── HRF-Engine/
+│   ├── HRF 21D/
+│   ├── HRF 26D/
+│   └── Generalized_HRF_V2.ipynb
+│
+├── HRF Codes/
+├── Research Paper/
+├── prototypes/
+├── README.md
+├── CONTRIBUTING.md
+├── AGENTS.md
+└── SECURITY.md
+```
+
+
+## 💡 Applications
+(docs: standardize metric definitions and reporting terminology)
 
 
 ---
