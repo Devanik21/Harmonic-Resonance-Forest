@@ -20,6 +20,14 @@ A Physics-Informed Machine Learning Framework for EEG Classification using Harmo
 
 ---
 
+# 💖 GirlScript Summer of Code (GSSoC 2026) This project is part of **GirlScript Summer of Code 2026 (GSSoC'26)**. ✔ Cleaner: 
+Documentation improvements Research validation Code optimization and refactoring Reproducibility enhancements
+ > ⚠️ Note:This repository contains research-grade implementations; maintain consistency with existing benchmarks. 
+ 
+  > ⚠️ gssoc-2026 branch is experimental and may contain unstable or incomplete implementations. 
+   > For stable benchmarks, always use main branch.
+   
+    ---
 
 ## 🚀 Overview
 
@@ -55,7 +63,7 @@ HRF is built on the **Titan-26 Manifold**, a unified 26-dimensional learning sys
 
 👉 Full Architecture:
 - 📄 [`docs/01_architecture.md`](./docs/01_architecture.md)
-- 📜 [`docs/hrf_titan_monograph.md`](./docs/hrf_titan_monograph.md)
+- 📜 [`docs/hrf_titan26_monograph.md`](./docs/hrf_titan_monograph.md)
 
 ---
 
@@ -121,6 +129,8 @@ HRF consistently outperforms traditional ML models in EEG classification tasks.
 👉 Full Benchmark Report:
 - 📄 [`docs/05_results_and_benchmarks.md`](./docs/05_results_and_benchmarks.md)
 
+👉 Metric Definitions:
+- 📄 [`docs/09_metric_definitions.md`](./docs/09_metric_definitions.md)
 ---
 
 ## 🧪 Ablation Studies
@@ -150,25 +160,40 @@ HRF demonstrates medical-grade reliability for EEG-based classification:
 ---
 
 ## 🧭 Project Structure
+
+```text
 .
 ├── docs/
-│ ├── 01_architecture.md
-│ ├── 02_pipeline.md
-│ ├── 03_mathematical_framework.md
-│ ├── hrf_titan_monograph.md
-│ ├── 04_experiments/
-│ ├── 05_results_and_benchmarks.md
-│ ├── 06_ablation_study.md
-│ ├── 07_clinical_validation.md
-│ └── images/
+│   ├── 00_overview.md
+│   ├── 01_architecture.md
+│   ├── 02_pipeline_overview.md
+│   ├── 03_mathematical_framework.md
+│   ├── 04_experiments/
+│   │   ├── phase_1.md
+│   │   ├── phase_2.md
+│   │   ├── phase_3.md
+│   │   └── stress_tests.md
+│   ├── 05_results_and_benchmarks.md
+│   ├── 06_ablation_study.md
+│   ├── 07_clinical_validation.md
+│   ├── 08_hrf_titan26_monograph.md
+│   ├── 09_metric_definitions.md
+│   └── images/
+│
 ├── HRF-Engine/
-├── HRF-Codes/
+│   ├── HRF 21D/
+│   ├── HRF 26D/
+│   └── Generalized_HRF_V2.ipynb
+│
+├── HRF Codes/
 ├── Research Paper/
 ├── prototypes/
 ├── README.md
+├── CONTRIBUTING.md
+├── AGENTS.md
+└── SECURITY.md
+```
 
-
----
 
 ## 💡 Applications
 

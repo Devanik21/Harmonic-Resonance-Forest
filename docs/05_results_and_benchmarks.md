@@ -17,5 +17,11 @@
 - Synthetic EEG: 85.56%
 - Real EEG: 98.84%
 
+## Metric Reporting
+
+For standardized definitions of reported evaluation metrics, see:
+
+- `docs/09_metric_definitions.md`
+
 ## Conclusion
 HRF generalizes across synthetic and real-world domains.
