@@ -32,6 +32,17 @@ from sklearn.metrics import log_loss, accuracy_score
 from scipy.optimize import minimize
 from scipy.fft import fft
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis, LinearDiscriminantAnalysis
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
+from sklearn.svm import LinearSVC, NuSVC
+from sklearn.datasets import fetch_openml
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import LabelEncoder
+from sklearn.utils import resample
+from sklearn.impute import SimpleImputer
 
 if __name__ == '__main__':
     logging.basicConfig(
@@ -59,10 +70,10 @@ from sklearn.utils import check_random_state
 try:
     import cupy as cp
     GPU_AVAILABLE = True
-    print("✅ GPU DETECTED: HRF v26.0 'Holo-Fractal Universe' Active")
+    print("[OK] GPU DETECTED: HRF v26.0 'Holo-Fractal Universe' Active")
 except ImportError:
     GPU_AVAILABLE = False
-    print("⚠️ GPU NOT FOUND: Running in Slow Mode")
+    print("[WARN] GPU NOT FOUND: Running in Slow Mode")
 
 warnings.filterwarnings('ignore')
 
@@ -252,11 +263,12 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
             total_energy = cp.sum(batch_probs, axis=1, keepdims=True)
             total_energy[total_energy == 0] = 1.0
             batch_probs /= total_energy
-            probas.append(batch_probs)
+            probas.append(cp.asnumpy(batch_probs))
             del batch_te, dists, diff, top_k_idx, top_dists, w, cosine_term
             cp.get_default_memory_pool().free_all_blocks()
 
-        return cp.asnumpy(cp.concatenate(probas))
+        import numpy as np
+        return np.concatenate(probas)
     def _predict_proba_cpu(self, X):
         """NumPy fallback for predict_proba when CuPy/GPU is unavailable.
         Mirrors _predict_proba_gpu exactly, using np instead of cp.
@@ -440,39 +452,6 @@ class OmniKernelUnit(BaseEstimator, ClassifierMixin):
 
     def score(self, X, y):
         return self.model_.score(X, y)
-
-
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis, LinearDiscriminantAnalysis
-from sklearn.kernel_ridge import KernelRidge
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import LinearSVC
-
-from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.svm import NuSVC
-
-import numpy as np
-import pandas as pd
-import warnings
-from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
-from xgboost import XGBClassifier
-from sklearn.preprocessing import RobustScaler
-from sklearn.random_projection import GaussianRandomProjection
-from sklearn.decomposition import PCA
-from sklearn.linear_model import RidgeClassifier
-from sklearn.mixture import GaussianMixture
-from sklearn.svm import SVC, NuSVC, LinearSVC
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.kernel_approximation import RBFSampler
-from sklearn.metrics import log_loss, accuracy_score
-from sklearn.utils.validation import check_X_y
-from sklearn.model_selection import train_test_split
-from scipy.optimize import minimize
-
 # --- 7a. GOLDEN PHI UNIT (Sector D — Unit 15: Biological Spiral Mapping) ---
 class GoldenPhiUnit(BaseEstimator, ClassifierMixin):
     """
@@ -731,7 +710,7 @@ class HolographicDifferentialTransformer(BaseEstimator, TransformerMixin):
     Holographic Differential).
     """
 
-    def __init__(self, clip_range: float = 15.0):
+    def __init__(self, clip_range: float = 15.0) -> None:
         self.clip_range = clip_range
 
     # ------------------------------------------------------------------
@@ -979,7 +958,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
 
 # --- 7. THE TITAN-14 "BEAST MODE" (Endgame Edition) ---
 class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, use_holographic_diff=False):
         self.verbose = verbose
         self.use_holographic_diff = use_holographic_diff
         # Robust scaling with wider quantile to catch outliers
@@ -987,7 +966,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         self.weights_ = None
         self.classes_ = None
         # Holographic transformer — instantiated once; fitted lazily in fit()
-        self._holo_transformer = HolographicDifferentialTransformer(clip_range=15.0)
+        self._holo_transformer = HolographicDifferentialTransformer(clip_range=15.0)  # type: ignore
 
         # --- THE 14 BEASTS (Maximum Fidelity) ---
 
@@ -1150,22 +1129,19 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
 
 
     def fit(self, X, y):
-            self.failed_units_ = []
-            # Create a list of all your sub-units to loop through them easily
-            units_list = [
-                self.unit_01, self.unit_02, self.unit_03, self.unit_04, self.unit_05,
-                self.unit_06, self.unit_07, self.unit_08, self.unit_09, self.unit_10,
-                self.unit_11, self.unit_12, self.unit_13, self.unit_14
-            ]
-            
-            for idx, unit in enumerate(units_list):
-                        try:
-                            unit.fit(X, y)
-                        except Exception as e:
-                            print(f"Warning: Unit {idx + 1} failed during training: {e}")
-                            self.failed_units_.append(idx + 1)
-                            
-                  
+        # 1. Validation and Scaling
+        y = np.array(y).astype(int)
+        X, y = check_X_y(X, y)
+        self.classes_ = np.unique(y)
+        n_classes = len(self.classes_)
+
+        X_scaled = self.scaler_.fit_transform(X)
+
+        # 2. Split for INTERNAL EVOLUTION
+        X_evo_t, X_evo_v, y_evo_t, y_evo_v = train_test_split(
+            X_scaled, y, test_size=0.2, stratify=y, random_state=42
+        )
+
         if self.verbose:
             print("\n" + "!"*60)
             print(" >>> HARMONIC RESONANCE FOREST: BEAST MODE (14D) INITIATED <<<")
@@ -1241,7 +1217,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
                     d = unit.decision_function(X_evo_v)
                     p = np.exp(d) / np.sum(np.exp(d), axis=1, keepdims=True)
                 preds_proba.append(p)
-            except:
+            except Exception:
                 preds_proba.append(np.ones((len(X_evo_v), n_classes)) / n_classes)
 
         # Optimization Function (Maximize Accuracy/Minimize Loss)
@@ -1351,7 +1327,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
                 else:
                     d = unit.decision_function(X_scaled)
                     p = np.exp(d) / np.sum(np.exp(d), axis=1, keepdims=True)
-            except:
+            except Exception:
                  p = np.ones((len(X), len(self.classes_))) / len(self.classes_)
 
             if final_pred is None:
@@ -1365,22 +1341,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
 
 def HarmonicResonanceForest_Ultimate(n_estimators=None):
-    return HarmonicResonanceClassifier_BEAST_14D(verbose=True)
-
-from sklearn.datasets import fetch_openml
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.utils import resample
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
-from xgboost import XGBClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-import numpy as np
-import pandas as pd
-from sklearn.impute import SimpleImputer
-
-# Updated to accept custom_X and custom_y
+    return HarmonicResonanceClassifier_BEAST_14D(verbose=True)# Updated to accept custom_X and custom_y
 def run_comparative_benchmark(dataset_name, openml_id, sample_limit=3000, custom_X=None, custom_y=None):
     print(f"\n[DATASET] Loading {dataset_name} (ID: {openml_id})...")
 
