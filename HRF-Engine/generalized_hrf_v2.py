@@ -189,11 +189,12 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
             total_energy = cp.sum(batch_probs, axis=1, keepdims=True)
             total_energy[total_energy == 0] = 1.0
             batch_probs /= total_energy
-            probas.append(batch_probs)
+            probas.append(cp.asnumpy(batch_probs))
             del batch_te, dists, diff, top_k_idx, top_dists, w, cosine_term
             cp.get_default_memory_pool().free_all_blocks()
 
-        return cp.asnumpy(cp.concatenate(probas))
+        import numpy as np
+        return np.concatenate(probas)
     def _predict_proba_cpu(self, X):
         """NumPy fallback for predict_proba when CuPy/GPU is unavailable.
         Mirrors _predict_proba_gpu exactly, using np instead of cp.
