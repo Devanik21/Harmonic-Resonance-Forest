@@ -373,8 +373,8 @@ class QuantumFieldUnit(BaseEstimator, ClassifierMixin):
         return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
 
 
-# --- 4. THE ENTROPY MAXWELL (Unit 5 - Reserve) ---
-class EntropyMaxwellUnit(BaseEstimator, ClassifierMixin):
+# --- 4. THE ENTROPY MAXWELL (Unit 5 - Reserve, GMM-based CPU implementation) ---
+class EntropyMaxwellUnitV1(BaseEstimator, ClassifierMixin):
     def __init__(self):
         self.models_ = {}
         self.classes_ = None
@@ -548,7 +548,7 @@ class GoldenSpiralUnit(BaseEstimator, ClassifierMixin):
 
 
 # ---Unit 19. THE ENTROPY FOREST (GPU T4 - Bootstrap Thermodynamics) ---
-class EntropyMaxwellUnit(BaseEstimator, ClassifierMixin):
+class EntropyMaxwellUnitV2(BaseEstimator, ClassifierMixin):
     def __init__(self, n_estimators=100):
         self.n_estimators = n_estimators
         self.forest_stats_ = [] # Stores (mean, var) for 50 bootstraps
@@ -2007,7 +2007,7 @@ class HarmonicResonanceClassifier_BEAST_21D(BaseEstimator, ClassifierMixin):
         # [COSMIC SECTOR - THE FINAL TRINITY]
         # 1. DEFINE THE UNITS (Using the NEW Heavy GPU classes)
         self.unit_18 = GoldenSpiralUnit(k=21, n_estimators=50)      # Golden Forest
-        self.unit_19 = EntropyMaxwellUnit(n_estimators=50)          # Entropy Forest
+        self.unit_19 = EntropyMaxwellUnitV2(n_estimators=50)          # Entropy Forest
         self.unit_20 = QuantumFluxUnit(n_estimators=20, gamma=0.5)  # Quantum Forest
         self.unit_21 = EventHorizonUnit(n_estimators=50)            # Gravity Forest
 
