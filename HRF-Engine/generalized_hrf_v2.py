@@ -1047,7 +1047,7 @@ class HarmonicResonanceClassifier_BEAST_16D(BaseEstimator, ClassifierMixin):
 class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
     def __init__(self, verbose=False, use_holographic_diff=False):
         """
-        Harmonic Resonance Classifier — BEAST Mode (14-Unit Endgame Edition).
+        Harmonic Resonance Classifier — BEAST Mode (16-Unit Endgame Edition).
 
         Parameters
         ----------
@@ -1065,10 +1065,6 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
             Default is ``False`` for backward compatibility with existing
             fitted models and non-EEG datasets.
         """
-
-# --- 7. THE TITAN-14 "BEAST MODE" (Endgame Edition) ---
-class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
-    def __init__(self, verbose=False):
         self.verbose = verbose
         self.use_holographic_diff = use_holographic_diff
         # Robust scaling with wider quantile to catch outliers
@@ -1076,7 +1072,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         self.weights_ = None
         self.classes_ = None
         # Holographic transformer — instantiated once; fitted lazily in fit()
-        self._holo_transformer = HolographicDifferentialTransformer(clip_range=15.0)
+        self._holo_transformer = HolographicDifferentialTransformer(clip_range=15.0)  # type: ignore
 
         # --- THE 14 BEASTS (Maximum Fidelity) ---
 
@@ -1159,32 +1155,6 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         # Newtonian softened potential produces curved, physics-informed boundaries.
         self.unit_16 = GravityPotentialUnit(softening=1e-2, batch_size=512, random_state=42)
 
-        # 12. THE HOLOGRAPHIC SOUL — Logic Seed
-        # Low frequency, tight boundary: favours crisp decision regions.
-        self.unit_12 = HolographicSoulUnit(
-            k=15, random_state=12,
-            freq=1.0, gamma=0.1, power=2.0,
-            p=2.0, phase=0.0, dim_reduction='none'
-        )
-
-        # 13. TWIN SOUL ALPHA — Chaos Seed
-        # Full 2π cycle, loose gamma, holographic projection: wave/frequency explorer.
-        self.unit_13 = HolographicSoulUnit(
-            k=15, random_state=13,
-            freq=6.2832, gamma=2.0, power=3.0,
-            p=2.0, phase=1.5708, dim_reduction='holo'
-        )
-
-        # 14. TWIN SOUL BETA — Order Seed
-        # π frequency, Manhattan norm, PCA projection: manifold/geometry explorer.
-        self.unit_14 = HolographicSoulUnit(
-            k=15, random_state=14,
-            freq=3.14159, gamma=0.5, power=1.0,
-            p=1.0, phase=0.7854, dim_reduction='pca'
-        )
-
-        # --- SECTOR D: MACRO-PHYSICAL LAYERS (Titan-26 Extension) ---
-
     def fit(self, X, y):
         """
         Fit the 14-unit BEAST ensemble on training data.
@@ -1229,13 +1199,6 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         X_evo_t, X_evo_v, y_evo_t, y_evo_v = train_test_split(
             X_scaled, y, test_size=0.24, stratify=y, random_state=21
         )
-        # 15. GOLDEN PHI (Biological Spiral Mapping — Unit 18 in Titan-26)
-        # φ-weighted feature space captures self-similar EEG/ECG signal structure.
-        self.unit_15 = GoldenPhiUnit(n_neighbors=7, random_state=42)
-
-        # 16. GRAVITY POTENTIAL (Inverse-Square Law Attraction — Unit 21 in Titan-26)
-        # Newtonian softened potential produces curved, physics-informed boundaries.
-        self.unit_16 = GravityPotentialUnit(softening=1e-2, batch_size=512, random_state=42)
 
 
         if self.verbose:
