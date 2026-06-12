@@ -9,3 +9,6 @@ openml>=0.13.0
 
 # Optional: GPU acceleration (install separately if CUDA is available)
 # cupy-cuda11x>=10.0.0
+librosa>=0.10.0
+soundfile>=0.12.1
+pydub>=0.25.1

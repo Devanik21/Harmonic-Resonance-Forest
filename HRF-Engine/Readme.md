@@ -609,6 +609,26 @@ The innovation lies not in inventing these concepts but in recognizing that mach
 This document provides a comprehensive analysis of unit activation patterns across twenty distinct classification problems spanning biological, physical, and synthetic domains. The analysis reveals clear specialization patterns, with geometric units dominating continuous signal data, logic units excelling on structured tabular data, and the Death Ray achieving strategic victories on four particularly complex datasets.
 
 ---
+## Audio Format Support
+
+HRF now includes an audio loading utility with support for multiple audio formats:
+
+* WAV
+* MP3
+* FLAC
+* OGG
+* AAC
+
+Example:
+
+```python
+from audio_loader import load_audio
+
+audio, sr = load_audio("sample.mp3")
+```
+
+This utility enables future audio-based HRF experiments and signal processing workflows.
+
 
 ## Activation Pattern Analysis by Dataset
 
