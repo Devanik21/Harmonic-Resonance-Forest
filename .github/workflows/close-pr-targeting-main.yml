@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 env:
-  CONTRIBUTION_BRANCH: gssoc-26
+  CONTRIBUTION_BRANCH: gssoc-2026
 
 jobs:
   enforce-branch-policy:
