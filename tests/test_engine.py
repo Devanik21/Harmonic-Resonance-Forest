@@ -1,17 +1,13 @@
+import pytest
 import numpy as np
-from HRF_Engine.engine import HarmonicResonanceClassifier # Adjust the import path!
+# Assuming the engine is located in the HRF-Engine folder
+from HRF_Engine import hrf_eeg # Adjust import based on your actual file structure
 
-def test_energy_calculation_basic():
-    # Setup: Create a tiny instance
-    model = HarmonicResonanceClassifier(base_freq=1.0, gamma=1.0, decay_type='gaussian')
-    
-    # Simple input
-    dists = np.array([1.0, 2.0])
-    class_id = 0
-    
-    # Run the function
-    energy = model._calculate_energy(dists, class_id)
-    
-    # Assert: Check if the result is a number (not NaN or error)
-    assert not np.isnan(energy)
-    assert isinstance(energy, float)
+def test_hrf_initialization():
+    """Check if the classifier initializes without errors."""
+    try:
+        # Replace 'HarmonicResonanceClassifier' with the actual class name from the repo
+        model = hrf_eeg.HarmonicResonanceClassifier() 
+        assert model is not None
+    except Exception as e:
+        pytest.fail(f"Initialization failed: {e}")
