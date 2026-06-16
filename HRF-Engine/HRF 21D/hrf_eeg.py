@@ -35,14 +35,22 @@ try:
     import cuml
     from cuml.neighbors import NearestNeighbors as cuNN
     from cuml.preprocessing import RobustScaler as cuRobustScaler
-    print("✅ GPU DETECTED: NVIDIA RAPIDS & CuPy Active")
-except ImportError:
-    install_rapids()
-    import cupy as cp
-    import cuml
-    from cuml.neighbors import NearestNeighbors as cuNN
-    from cuml.preprocessing import RobustScaler as cuRobustScaler
 
+    GPU_AVAILABLE = True
+    print("✅ GPU DETECTED: NVIDIA RAPIDS & CuPy Active")
+
+except ImportError:
+    import numpy as cp
+    from sklearn.neighbors import NearestNeighbors as cuNN
+    from sklearn.preprocessing import RobustScaler as cuRobustScaler
+
+    GPU_AVAILABLE = False
+    print("⚠️ GPU libraries not found. Falling back to CPU mode.")
+
+def to_numpy(x):
+    if GPU_AVAILABLE:
+        return cp.asnumpy(x)
+    return x
 # --- 1. GPU-ACCELERATED PREPROCESSOR (BIPOLAR MONTAGE) ---
 def apply_bipolar_montage_gpu(X_gpu):
     """
@@ -226,7 +234,7 @@ def run_soul_showcase_gpu(data_id=1471):
     for soul in souls:
         soul.fit(X_tr_c, y_tr_c)
         preds_gpu = soul.predict(X_te_g)
-        preds_cpu = cp.asnumpy(preds_gpu)
+        preds_cpu = to_numpy(preds_gpu)
         soul_preds_cpu.append(preds_cpu)
 
         acc = accuracy_score(y_te_c, preds_cpu)
@@ -247,7 +255,7 @@ def run_soul_showcase_gpu(data_id=1471):
 
         # 2. Predict on GPU, move to CPU for scoring
         preds_gpu = soul.predict(X_te_g)
-        preds_cpu = cp.asnumpy(preds_gpu)
+        preds_cpu = to_numpy(preds_gpu)
 
         acc = accuracy_score(y_te_c, preds_cpu)
 
