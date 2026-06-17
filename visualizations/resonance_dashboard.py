@@ -51,7 +51,7 @@ if st.sidebar.button("Load Demo Model"):
     hrf_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(hrf_module)
 
-    ModelClass = hrf_module.HarmonicResonanceForest_Ultimate
+    ModelClass = hrf_module.HarmonicResonanceClassifier_BEAST_14D
 
     model = ModelClass()
 
