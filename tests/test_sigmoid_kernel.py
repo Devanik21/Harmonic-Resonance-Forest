@@ -41,7 +41,7 @@ def test_sigmoid_svc_predict_proba():
     # Must not raise AttributeError
     proba = clf.predict_proba(X_te)
 
-    assert proba.shape == (len(y_te), len(np.unique(y))), (
+    assert proba.shape == (len(y_te), len(clf.classes_)), (
         "predict_proba output shape should be (n_samples, n_classes)"
     )
     assert np.allclose(proba.sum(axis=1), 1.0), (
