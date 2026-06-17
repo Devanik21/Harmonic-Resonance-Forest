@@ -294,14 +294,9 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         for i in range(0, n_test, batch_size):
             end       = min(i + batch_size, n_test)
             batch_te  = X_te_g[i:end]
-            dists     = cp.empty((len(batch_te), len(X_tr_g)), dtype=cp.float32)
-            sub_batch_size = 64
-            for j in range(0, len(batch_te), sub_batch_size):
-                sub_end = min(j + sub_batch_size, len(batch_te))
-                sub_batch = batch_te[j:sub_end]
-                diff = cp.abs(sub_batch[:, None, :] - X_tr_g[None, :, :])
-                dists[j:sub_end] = cp.sum(cp.power(diff, p_norm), axis=2)
-            dists     = cp.power(dists, 1.0 / p_norm)
+
+            diff      = cp.abs(batch_te[:, None, :] - X_tr_g[None, :, :])
+            dists     = cp.power(cp.sum(cp.power(diff, p_norm), axis=2), 1.0 / p_norm)
             top_k_idx = cp.argsort(dists, axis=1)[:, :self.k]
             row_idx   = cp.arange(len(batch_te))[:, None]
             top_dists = dists[row_idx, top_k_idx]              # (B, k)
@@ -1073,7 +1068,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
 
 # --- 7. THE TITAN-14 "BEAST MODE" (Endgame Edition) ---
 class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, use_holographic_diff=False):
         self.verbose = verbose
         self.use_holographic_diff = use_holographic_diff
         # Robust scaling with wider quantile to catch outliers
