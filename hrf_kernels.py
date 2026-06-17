@@ -28,8 +28,10 @@ def make_sigmoid_svc(**overrides):
     cfg = SIGMOID_KERNEL_DEFAULTS.copy()
     cfg.update(overrides)
     cfg['kernel'] = 'sigmoid'
-    # Must be True: HRF ensemble requires predict_proba() on every unit.
-    # Callers may override with probability=False only for standalone use.
-    cfg.setdefault('probability', True)
+    # Must default to True for HRF ensemble compatibility unless explicitly overridden.
+    # Using `if not in overrides` (not setdefault) makes this robust against
+    # SIGMOID_KERNEL_DEFAULTS ever being updated to include probability=False.
+    if 'probability' not in overrides:
+        cfg['probability'] = True
 
     return SVC(**cfg)
