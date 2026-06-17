@@ -32,6 +32,8 @@ def install_rapids():
 
 try:
     import cupy as cp
+    if not cp.cuda.is_available():
+        raise ImportError("CUDA GPU is not available.")
     import cuml
     from cuml.neighbors import NearestNeighbors as cuNN
     from cuml.preprocessing import RobustScaler as cuRobustScaler
