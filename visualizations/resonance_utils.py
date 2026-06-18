@@ -102,14 +102,21 @@ class ResonanceCaptureWrapper:
             if not hasattr(self.model, 'unit_01'):
                 return self._extract_from_proba(X, probas)
 
-            # Dynamic unit discovery — no hardcoded unit count.
-            # Units are collected in numeric order so weights_[i] always
-            # corresponds to the correct unit regardless of ensemble size.
-            all_units = [
-                getattr(self.model, f'unit_{i:02d}')
-                for i in range(1, 100)
-                if hasattr(self.model, f'unit_{i:02d}')
-            ]
+            # Dynamic unit discovery with correct ordering.
+            # Soul units (12, 13, 14) must be placed at the END to match
+            # the order in which fit() appends them to preds_proba and
+            # the weight optimizer assigns weights_[i].
+            standard_units = []
+            soul_units = []
+            for i in range(1, 100):
+                attr_name = f'unit_{i:02d}'
+                if hasattr(self.model, attr_name):
+                    unit = getattr(self.model, attr_name)
+                    if i in (12, 13, 14):
+                        soul_units.append(unit)
+                    else:
+                        standard_units.append(unit)
+            all_units = standard_units + soul_units
 
             units_proba = []
             for unit in all_units:
@@ -153,6 +160,32 @@ class ResonanceCaptureWrapper:
         reasonable heatmap visualization using available data.
         """
         return probas
+
+    def get_params(self, deep=True):
+        """
+        Return wrapper parameters for sklearn clone() compatibility.
+
+        Exposes ``model`` as the top-level parameter and tunnels inner
+        model params as ``model__<param>`` when ``deep=True``, following
+        the standard sklearn meta-estimator convention.
+        """
+        params = {'model': self.model}
+        if deep and hasattr(self.model, 'get_params'):
+            for k, v in self.model.get_params(deep=True).items():
+                params[f'model__{k}'] = v
+        return params
+
+    def set_params(self, **params):
+        """Route ``model__*`` params to the wrapped model; set others on self."""
+        model_params = {}
+        for k in list(params.keys()):
+            if k.startswith('model__'):
+                model_params[k[7:]] = params.pop(k)
+        if 'model' in params:
+            self.model = params.pop('model')
+        if model_params and hasattr(self.model, 'set_params'):
+            self.model.set_params(**model_params)
+        return self
 
     def __getattr__(self, name: str):
         """
