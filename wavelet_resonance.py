@@ -5,7 +5,7 @@ transform (DWT) and returns a compact representation suitable for
 time-series signals. Designed to be optional and low-overhead.
 """
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.utils.validation import check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted
 import numpy as np
 
 try:
@@ -29,24 +29,19 @@ class WaveletResonanceTransformer(BaseEstimator, TransformerMixin):
         self.level = level
 
     def fit(self, X, y=None):
-        X = check_array(X)
-        # Store input feature count so transform() can catch mismatches.
-        # Required by sklearn TransformerMixin contract since sklearn 1.0.
-        self.n_features_in_ = X.shape[1]
+        # _validate_data (inherited from BaseEstimator) validates the array,
+        # sets self.n_features_in_, and sets self.feature_names_in_ when X
+        # is a pandas DataFrame — the standard sklearn pattern (>=1.2.0).
+        X = self._validate_data(X, reset=True)
         self.wavelet_ = self.wavelet or WAVELET_DEFAULTS['wavelet']
         self.level_ = self.level if self.level is not None else WAVELET_DEFAULTS['level']
         return self
 
     def transform(self, X):
-        check_is_fitted(self, ['wavelet_', 'level_', 'n_features_in_'])
-        X = check_array(X)
-
-        if X.shape[1] != self.n_features_in_:
-            raise ValueError(
-                f"X has {X.shape[1]} features but WaveletResonanceTransformer "
-                f"was fitted with {self.n_features_in_} features. Ensure the "
-                f"same dataset or pipeline is used for fit and transform."
-            )
+        check_is_fitted(self)
+        # reset=False validates array AND raises a descriptive ValueError
+        # when feature count differs from what was seen during fit().
+        X = self._validate_data(X, reset=False)
 
         if not ENABLE_WAVELET_RESONANCE:
             # Pass-through when disabled
