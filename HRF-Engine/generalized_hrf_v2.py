@@ -164,6 +164,7 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         self : object
             Fitted estimator.
         """
+        X, y = check_X_y(X, y)
         self.classes_ = np.unique(y)
         self._apply_projection(X)
         self.y_train_ = y
