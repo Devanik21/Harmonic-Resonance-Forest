@@ -305,9 +305,14 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
                 dists_sq = cp.maximum(dists_sq, 0.0)
                 dists = cp.sqrt(dists_sq)
             else:
-                # [SLOW PATH] Broadcasting for non-Euclidean metrics (p != 2)
-                diff = cp.abs(batch_te[:, None, :] - self._X_train_gpu[None, :, :])
-                dists = cp.sum(cp.power(diff, p_norm), axis=2)
+                # [SLOW PATH] Memory-efficient loop for non-Euclidean metrics (p != 2)
+                dists = cp.empty((len(batch_te), len(self._X_train_gpu)), dtype=cp.float32)
+                sub_batch_size = 64
+                for j in range(0, len(batch_te), sub_batch_size):
+                    sub_end = min(j + sub_batch_size, len(batch_te))
+                    sub_batch = batch_te[j:sub_end]
+                    diff = cp.abs(sub_batch[:, None, :] - self._X_train_gpu[None, :, :])
+                    dists[j:sub_end] = cp.sum(cp.power(diff, p_norm), axis=2)
                 dists = cp.power(dists, 1.0 / p_norm)
 
             # --- WEIGHTING (RESONANCE) ---
@@ -374,7 +379,7 @@ class QuantumFieldUnit(BaseEstimator, ClassifierMixin):
 
 
 # --- 4. THE ENTROPY MAXWELL (Unit 5 - Reserve) ---
-class EntropyMaxwellUnit(BaseEstimator, ClassifierMixin):
+class EntropyMaxwellUnitV1(BaseEstimator, ClassifierMixin):
     def __init__(self):
         self.models_ = {}
         self.classes_ = None
@@ -547,8 +552,8 @@ class GoldenSpiralUnit(BaseEstimator, ClassifierMixin):
         return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
 
 
-# ---Unit 19. THE ENTROPY FOREST (GPU T4 - Bootstrap Thermodynamics) ---
-class EntropyMaxwellUnit(BaseEstimator, ClassifierMixin):
+# ---Unit 19. THE ENTROPY FOREST V2 (GPU T4 - Bootstrap Thermodynamics) ---
+class EntropyForestUnit(BaseEstimator, ClassifierMixin):
     def __init__(self, n_estimators=100):
         self.n_estimators = n_estimators
         self.forest_stats_ = [] # Stores (mean, var) for 50 bootstraps
@@ -2007,7 +2012,7 @@ class HarmonicResonanceClassifier_BEAST_21D(BaseEstimator, ClassifierMixin):
         # [COSMIC SECTOR - THE FINAL TRINITY]
         # 1. DEFINE THE UNITS (Using the NEW Heavy GPU classes)
         self.unit_18 = GoldenSpiralUnit(k=21, n_estimators=50)      # Golden Forest
-        self.unit_19 = EntropyMaxwellUnit(n_estimators=50)          # Entropy Forest
+        self.unit_19 = EntropyForestUnit(n_estimators=50)          # Entropy Forest
         self.unit_20 = QuantumFluxUnit(n_estimators=20, gamma=0.5)  # Quantum Forest
         self.unit_21 = EventHorizonUnit(n_estimators=50)            # Gravity Forest
 
