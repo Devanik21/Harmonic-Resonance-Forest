@@ -5,6 +5,7 @@ transform (DWT) and returns a compact representation suitable for
 time-series signals. Designed to be optional and low-overhead.
 """
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils.validation import check_is_fitted
 import numpy as np
 
 try:
@@ -12,7 +13,6 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     pywt = None
 
-from sklearn.utils.validation import check_is_fitted
 from hrf_config import WAVELET_DEFAULTS, ENABLE_WAVELET_RESONANCE
 
 
@@ -29,12 +29,19 @@ class WaveletResonanceTransformer(BaseEstimator, TransformerMixin):
         self.level = level
 
     def fit(self, X, y=None):
+        # _validate_data (inherited from BaseEstimator) validates the array,
+        # sets self.n_features_in_, and sets self.feature_names_in_ when X
+        # is a pandas DataFrame — the standard sklearn pattern (>=1.2.0).
+        X = self._validate_data(X, reset=True)
         self.wavelet_ = self.wavelet or WAVELET_DEFAULTS['wavelet']
         self.level_ = self.level if self.level is not None else WAVELET_DEFAULTS['level']
         return self
 
     def transform(self, X):
-        check_is_fitted(self, ['wavelet_', 'level_'])
+        check_is_fitted(self)
+        # reset=False validates array AND raises a descriptive ValueError
+        # when feature count differs from what was seen during fit().
+        X = self._validate_data(X, reset=False)
 
         if not ENABLE_WAVELET_RESONANCE:
             # Pass-through when disabled
@@ -43,7 +50,6 @@ class WaveletResonanceTransformer(BaseEstimator, TransformerMixin):
         if pywt is None:
             raise RuntimeError('pywt (PyWavelets) is required for WaveletResonanceTransformer')
 
-        X = np.asarray(X)
         if X.ndim != 2:
             raise ValueError('X must be 2D: (n_samples, n_features)')
 
