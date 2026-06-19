@@ -34,11 +34,19 @@ class ResonanceCaptureWrapper:
     Examples
     --------
     >>> from visualizations.resonance_utils import ResonanceCaptureWrapper
-    >>> model = HarmonicResonanceForest_Ultimate()
+    >>> model = HarmonicResonanceClassifier_BEAST_14D()
     >>> model.fit(X_train, y_train)
     >>> wrapped_model = ResonanceCaptureWrapper(model)
     >>> _ = wrapped_model.predict_proba(X_test)
     >>> resonance_map = wrapped_model.last_resonance_map_
+
+    Notes
+    -----
+    Attribute writes always go to the wrapper's own ``__dict__``.
+    Attribute reads that are not found on the wrapper are delegated
+    to the wrapped model via ``__getattr__``. This design keeps the
+    wrapper fully compatible with ``sklearn.base.clone()``, ``pickle``,
+    and all meta-estimators (GridSearchCV, Pipeline, cross_val_score).
     """
 
     def __init__(self, model: object):
@@ -50,7 +58,6 @@ class ResonanceCaptureWrapper:
 
     def _setup_extractor(self):
         """Setup resonance extraction strategy based on model type."""
-        # Check model type and setup appropriate extractor
         model_class_name = self.model.__class__.__name__
 
         if 'BEAST' in model_class_name or 'Harmonic' in model_class_name:
@@ -58,7 +65,6 @@ class ResonanceCaptureWrapper:
         elif 'HolographicSoul' in model_class_name:
             self._resonance_extractor = self._extract_from_soul_unit
         else:
-            # Fallback: use predict_proba output as resonance proxy
             self._resonance_extractor = self._extract_from_proba
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
@@ -75,12 +81,8 @@ class ResonanceCaptureWrapper:
         probas : np.ndarray
             Class probabilities (same as model.predict_proba).
         """
-        # Get predictions from wrapped model
         probas = self.model.predict_proba(X)
-
-        # Capture resonance
         self._capture_resonance(X, probas)
-
         return probas
 
     def _capture_resonance(self, X: np.ndarray, probas: np.ndarray):
@@ -92,36 +94,46 @@ class ResonanceCaptureWrapper:
         """
         Extract resonance from ensemble model (BEAST).
 
-        For ensemble models, compute weighted unit contributions
-        to show which units "voted" for each prediction.
+        Discovers units dynamically so this works for any ensemble size
+        (14-unit BEAST, 16-unit Titan extension, future variants).
+        Weights are applied in the same order units are discovered.
         """
         try:
-            if not hasattr(self.model, 'unit_12'):
+            if not hasattr(self.model, 'unit_01'):
                 return self._extract_from_proba(X, probas)
 
-            # Get individual unit predictions if available
-            units_proba = []
-            all_units = [
-                self.model.unit_01, self.model.unit_02, self.model.unit_03,
-                self.model.unit_04, self.model.unit_05, self.model.unit_06,
-                self.model.unit_07, self.model.unit_15, self.model.unit_16,
-                self.model.unit_08, self.model.unit_09, self.model.unit_10,
-                self.model.unit_11, self.model.unit_12, self.model.unit_13,
-                self.model.unit_14
-            ]
+            # Dynamic unit discovery with correct ordering.
+            # Soul units (12, 13, 14) must be placed at the END to match
+            # the order in which fit() appends them to preds_proba and
+            # the weight optimizer assigns weights_[i].
+            standard_units = []
+            soul_units = []
+            for i in range(1, 100):
+                attr_name = f'unit_{i:02d}'
+                if hasattr(self.model, attr_name):
+                    unit = getattr(self.model, attr_name)
+                    if i in (12, 13, 14):
+                        soul_units.append(unit)
+                    else:
+                        standard_units.append(unit)
+            all_units = standard_units + soul_units
 
+            units_proba = []
             for unit in all_units:
                 try:
                     if hasattr(unit, 'predict_proba'):
                         u_proba = unit.predict_proba(X)
                     else:
-                        u_proba = np.ones((len(X), len(self.model.classes_))) / len(self.model.classes_)
+                        u_proba = (np.ones((len(X), len(self.model.classes_)))
+                                   / len(self.model.classes_))
                     units_proba.append(u_proba)
                 except Exception:
-                    units_proba.append(np.ones((len(X), len(self.model.classes_))) / len(self.model.classes_))
+                    units_proba.append(
+                        np.ones((len(X), len(self.model.classes_)))
+                        / len(self.model.classes_)
+                    )
 
-            # Weight by model weights
-            if hasattr(self.model, 'weights_'):
+            if hasattr(self.model, 'weights_') and self.model.weights_ is not None:
                 weighted_sum = np.zeros_like(probas)
                 for i, u_proba in enumerate(units_proba):
                     weighted_sum += self.model.weights_[i] * u_proba
@@ -149,16 +161,50 @@ class ResonanceCaptureWrapper:
         """
         return probas
 
+    def get_params(self, deep=True):
+        """
+        Return wrapper parameters for sklearn clone() compatibility.
+
+        Exposes ``model`` as the top-level parameter and tunnels inner
+        model params as ``model__<param>`` when ``deep=True``, following
+        the standard sklearn meta-estimator convention.
+        """
+        params = {'model': self.model}
+        if deep and hasattr(self.model, 'get_params'):
+            for k, v in self.model.get_params(deep=True).items():
+                params[f'model__{k}'] = v
+        return params
+
+    def set_params(self, **params):
+        """Route ``model__*`` params to the wrapped model; set others on self."""
+        model_params = {}
+        for k in list(params.keys()):
+            if k.startswith('model__'):
+                model_params[k[7:]] = params.pop(k)
+        if 'model' in params:
+            self.model = params.pop('model')
+        if model_params and hasattr(self.model, 'set_params'):
+            self.model.set_params(**model_params)
+        return self
+
     def __getattr__(self, name: str):
-        """Delegate attribute access to wrapped model."""
+        """
+        Delegate attribute reads to the wrapped model.
+
+        Only called when ``name`` is not found in the wrapper's own
+        ``__dict__`` — so wrapper-level attributes (model,
+        last_resonance_map_, _resonance_extractor, and any method
+        defined on this class) are always resolved locally first.
+        """
         return getattr(self.model, name)
 
-    def __setattr__(self, name: str, value):
-        """Handle both wrapper and model attributes."""
-        if name in ['model', 'last_resonance_map_', '_resonance_extractor']:
-            super().__setattr__(name, value)
-        else:
-            setattr(self.model, name, value)
+    # NOTE: No custom __setattr__ defined here intentionally.
+    # Python's default __setattr__ writes all assignments to the wrapper's
+    # own __dict__, which is the correct behaviour:
+    #   - sklearn clone() can reconstruct the wrapper correctly
+    #   - pickle/unpickle restores wrapper state without touching the model
+    #   - meta-estimators (GridSearchCV, Pipeline) set their bookkeeping
+    #     attributes on the wrapper, not on the wrapped model
 
 
 def enable_resonance_capture(model: object) -> object:
