@@ -258,7 +258,8 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         self.dna_ = best_dna
         return best_acc
 
-    def predict_proba(self, X):
+        check_is_fitted(self, ['X_train_', 'y_train_'])
+        X = check_array(X)
         if self.projector_ is not None: X_curr = self.projector_.transform(X)
         else: X_curr = X
         if GPU_AVAILABLE: return self._predict_proba_gpu(X_curr)
