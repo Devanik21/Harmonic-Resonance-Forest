@@ -38,7 +38,7 @@ Maintainers have the right and responsibility to remove, edit, or reject comment
 
 ## Scope
 
-This Code of Conduct applies within all project spaces — including the GitHub repository, issues, pull requests, and any official community channels — and also applies when an individual is officially representing the project in public spaces. Examples of representing the project include using the official project email, posting on social media about Harmonic-Resonance-Forest, or speaking at an online or offline event on behalf of the project.
+This Code of Conduct applies within all project spaces — including the GitHub repository, issues, pull requests, and any official community channels — and also applies when an individual is officially representing the project in public spaces. Examples of representing the project include using the official project email, posting on social media about Harmonic Resonance Forest, or speaking at an online or offline event on behalf of the project.
 
 ---
 
