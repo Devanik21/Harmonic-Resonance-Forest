@@ -255,7 +255,8 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         if GPU_AVAILABLE: return self._predict_proba_gpu(X_curr)
         else: return self._predict_proba_cpu(X_curr)
 
-    def _predict_proba_cpu(self, X: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:   #self.dna_: Dict[str, Any] = {'freq': 2.0, ...}    
+    def _predict_proba_gpu(self, X: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+        X_tr_g = cp.asarray(self.X_train_, dtype=cp.float32)
     def _predict_proba_gpu(self, X):
         """
         CuPy (GPU) implementation of the HRF wave-potential kernel.
