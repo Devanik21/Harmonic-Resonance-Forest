@@ -15,7 +15,10 @@ Increase gen for Stability and accuracy.
 import numpy as np
 import pandas as pd
 import warnings
+import cupy as cp
+import time
 import numpy.typing as npt
+from cupyx.scipy.spatial.distance import cdist
 from typing import Dict, List, Optional, Union, Any
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import ExtraTreesClassifier
@@ -33,7 +36,9 @@ from scipy.optimize import minimize
 from scipy.fft import fft
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils import check_random_state
-
+# Use a dedicated, fixed-size memory pool to prevent fragmentation
+mempool = cp.get_default_memory_pool()
+mempool.set_limit(size=2 * 1024 * 1024 * 1024) # Set a 2GB limit (adjust based on your GPU)
 # GPU CHECK
 try:
     import cupy as cp
@@ -164,33 +169,22 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         self.dna_ = best_dna
         return best_acc
 
-    def predict_proba(self, X):
-        if self.projector_ is not None: X_curr = self.projector_.transform(X)
-        else: X_curr = X
-        if GPU_AVAILABLE: return self._predict_proba_gpu(X_curr)
-        else: return self._predict_proba_cpu(X_curr)
-
-    def _predict_proba_cpu(self, X: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:   #self.dna_: Dict[str, Any] = {'freq': 2.0, ...}    
-        X_te_g = cp.asarray(X, dtype=cp.float32)
+    def _predict_proba_gpu(self, X):
+        X_tr_g = cp.asarray(self.X_train_, dtype=cp.float32)
         y_tr_g = cp.asarray(self.y_train_)
-
-        n_test = len(X_te_g)
-        n_classes = len(self.classes_)
         probas = []
-        batch_size = 256
-
+        
+        # 1. Ensure these are defined before the loop
         p_norm = self.dna_.get('p', 2.0)
-        gamma = self.dna_['gamma']
-        freq = self.dna_['freq']
-        power = self.dna_['power']
-        phase = self.dna_.get('phase', 0.0)
-
-        for i in range(0, n_test, batch_size):
-            end = min(i + batch_size, n_test)
-            batch_te = X_te_g[i:end]
-            diff = cp.abs(batch_te[:, None, :] - X_tr_g[None, :, :])
-            dists = cp.sum(cp.power(diff, p_norm), axis=2)
-            dists = cp.power(dists, 1.0/p_norm)
+        
+        for i in range(0, len(X), batch_size):
+            end = min(i + batch_size, len(X))
+            batch_te = cp.asarray(X[i:end], dtype=cp.float32)
+            
+            # --- OPTIMIZED BATCH LOGIC ---
+            # Replaces the massive broadcasting 'diff' with memory-efficient cdist
+            dists = cdist(batch_te, X_tr_g, metric='minkowski', p=p_norm)
+            
             top_k_idx = cp.argsort(dists, axis=1)[:, :self.k]
             row_idx = cp.arange(len(batch_te))[:, None]
             top_dists = dists[row_idx, top_k_idx]
@@ -209,12 +203,19 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
             total_energy = cp.sum(batch_probs, axis=1, keepdims=True)
             total_energy[total_energy == 0] = 1.0
             batch_probs /= total_energy
-            probas.append(batch_probs)
-            del batch_te, dists, diff, top_k_idx, top_dists, w, cosine_term
-            cp.get_default_memory_pool().free_all_blocks()
+            # -----------------------------
 
-        return cp.asnumpy(cp.concatenate(probas))
+            probas.append(cp.asnumpy(batch_probs))
+            
+            # Cleanup
+            del batch_te, dists, top_k_idx, top_dists, top_y, w, cosine_term, batch_probs, total_energy
+            cp.get_default_memory_pool().free_all_blocks()
+                
+        return np.concatenate(probas)
+
     def _predict_proba_cpu(self, X):
+        # Your existing CPU fallback logic here...
+        pass
         """NumPy fallback for predict_proba when CuPy/GPU is unavailable.
         Mirrors _predict_proba_gpu exactly, using np instead of cp.
         """
@@ -262,7 +263,7 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
             total_energy[total_energy == 0] = 1.0  # avoid division by zero
             batch_probs /= total_energy
 
-            probas.append(batch_probs)
+            probas.append(cp.asnumpy(batch_probs))
 
         return np.concatenate(probas)
  
