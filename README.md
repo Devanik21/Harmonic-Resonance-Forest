@@ -438,6 +438,17 @@ I validated HRF across diverse datasets to prove generalization, culminating in 
 - **Benchmark Code:** Reproducible experiments on OpenML 1471
 - **Tutorial Notebooks:** Step-by-step implementation guides
 
+### 📈 Interactive Resonance Field Visualization
+
+To help users and researchers understand the physics-informed classification mechanisms behind HRF, the framework provides an **Explainable Resonance Dashboard**.
+
+- **Interactive Jupyter Notebook**: Explore step-by-step resonance heatmaps and decision boundary visualizations using `examples/Interactive_Resonance_Visualization.ipynb`.
+- **Explainability Documentation**: See [`docs/explainable_dashboard.md`](docs/explainable_dashboard.md) for full usage instructions and API references.
+- **Run the Dashboard locally**: Execute the Streamlit web app to dynamically view class-wise resonance contributions:
+  ```bash
+  streamlit run visualizations/resonance_dashboard.py
+  ```
+
 
 
 
