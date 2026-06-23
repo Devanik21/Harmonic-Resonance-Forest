@@ -17,6 +17,9 @@ import logging
 import numpy as np
 import pandas as pd
 import warnings
+import numpy.typing as npt
+from typing import Dict, List, Optional, Union, Any
+from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.ensemble import ExtraTreesClassifier
 from xgboost import XGBClassifier
@@ -148,27 +151,16 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         self.projector_ = None
         self.X_raw_source_ = None
 
-    def fit(self, X, y):
-        """
-        Fit the resonance unit to training data.
+    def fit(self, X: npt.NDArray[np.float64], y: npt.NDArray[np.int64]) -> 'HolographicSoulUnit':
+            """
+            Fit the resonance unit to training data.
+            """
+            self.classes_ = np.unique(y)
+            self._apply_projection(X)
+            self.y_train_ = y
+            return self
 
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Feature matrix.
-        y : array-like of shape (n_samples,)
-            Class labels.
-
-        Returns
-        -------
-        self : object
-            Fitted estimator.
-        """
-        self.classes_ = np.unique(y)
-        self._apply_projection(X)
-        self.y_train_ = y
-        return self
-
+    def _apply_projection(self, X: npt.NDArray[np.float64]) -> None:
 
     def _apply_projection(self, X):
         if self.dna_['dim_reduction'] == 'holo':
@@ -176,13 +168,12 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
             self.projector_ = GaussianRandomProjection(n_components=n_components, random_state=42)
             self.X_train_ = self.projector_.fit_transform(X)
         elif self.dna_['dim_reduction'] == 'pca':
-             n_components = max(2, int(np.sqrt(X.shape[1])))
-             self.projector_ = PCA(n_components=n_components, random_state=42)
-             self.X_train_ = self.projector_.fit_transform(X)
+            n_components = max(2, int(np.sqrt(X.shape[1])))
+            self.projector_ = PCA(n_components=n_components, random_state=42)
+            self.X_train_ = self.projector_.fit_transform(X)
         else:
             self.projector_ = None
             self.X_train_ = X
-
     # [FIX] Indentation corrected: Now this method is part of the class
     def set_raw_source(self, X):
         self.X_raw_source_ = X
@@ -264,6 +255,8 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         if GPU_AVAILABLE: return self._predict_proba_gpu(X_curr)
         else: return self._predict_proba_cpu(X_curr)
 
+    def _predict_proba_gpu(self, X: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+        X_tr_g = cp.asarray(self.X_train_, dtype=cp.float32)
     def _predict_proba_gpu(self, X):
         """
         CuPy (GPU) implementation of the HRF wave-potential kernel.
