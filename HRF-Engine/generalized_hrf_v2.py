@@ -17,6 +17,17 @@ import logging
 import numpy as np
 import pandas as pd
 import warnings
+fix/issue-229-memory-leak
+import cupy as cp
+import time
+import numpy.typing as npt
+from cupyx.scipy.spatial.distance import cdist
+from typing import Dict, List, Optional, Union, Any
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin gssoc-2026
+import numpy.typing as npt
+from typing import Dict, List, Optional, Union, Any
+from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.ensemble import ExtraTreesClassifier
 from xgboost import XGBClassifier
@@ -54,7 +65,9 @@ if __name__ == '__main__':
     sys.excepthook = global_exception_handler
 
 from sklearn.utils import check_random_state
-
+# Use a dedicated, fixed-size memory pool to prevent fragmentation
+mempool = cp.get_default_memory_pool()
+mempool.set_limit(size=2 * 1024 * 1024 * 1024) # Set a 2GB limit (adjust based on your GPU)
 # GPU CHECK
 try:
     import cupy as cp
@@ -148,41 +161,31 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         self.projector_ = None
         self.X_raw_source_ = None
 
-    def fit(self, X, y):
-        """
-        Fit the resonance unit to training data.
+    def fit(self, X: npt.NDArray[np.float64], y: npt.NDArray[np.int64]) -> 'HolographicSoulUnit':
+            """
+            Fit the resonance unit to training data.
+            """
+            self.classes_ = np.unique(y)
+            self._apply_projection(X)
+            self.y_train_ = y
+            return self
 
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Feature matrix.
-        y : array-like of shape (n_samples,)
-            Class labels.
-
-        Returns
-        -------
-        self : object
-            Fitted estimator.
-        """
-        self.classes_ = np.unique(y)
-        self._apply_projection(X)
-        self.y_train_ = y
-        return self
-
+ fix/issue-229-memory-leak
+    def _apply_projection(self, X: npt.NDArray[np.float64]) -> None:
 
     def _apply_projection(self, X):
+ gssoc-2026
         if self.dna_['dim_reduction'] == 'holo':
             n_components = max(2, int(np.sqrt(X.shape[1])))
             self.projector_ = GaussianRandomProjection(n_components=n_components, random_state=42)
             self.X_train_ = self.projector_.fit_transform(X)
         elif self.dna_['dim_reduction'] == 'pca':
-             n_components = max(2, int(np.sqrt(X.shape[1])))
-             self.projector_ = PCA(n_components=n_components, random_state=42)
-             self.X_train_ = self.projector_.fit_transform(X)
+            n_components = max(2, int(np.sqrt(X.shape[1])))
+            self.projector_ = PCA(n_components=n_components, random_state=42)
+            self.X_train_ = self.projector_.fit_transform(X)
         else:
             self.projector_ = None
             self.X_train_ = X
-
     # [FIX] Indentation corrected: Now this method is part of the class
     def set_raw_source(self, X):
         self.X_raw_source_ = X
@@ -264,6 +267,8 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         if GPU_AVAILABLE: return self._predict_proba_gpu(X_curr)
         else: return self._predict_proba_cpu(X_curr)
 
+    def _predict_proba_gpu(self, X: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+        X_tr_g = cp.asarray(self.X_train_, dtype=cp.float32)
     def _predict_proba_gpu(self, X):
         """
         CuPy (GPU) implementation of the HRF wave-potential kernel.
@@ -277,8 +282,21 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         The cosine term is class-specific and computed inside the per-class loop.
         """
         X_tr_g = cp.asarray(self.X_train_, dtype=cp.float32)
-        X_te_g = cp.asarray(X, dtype=cp.float32)
         y_tr_g = cp.asarray(self.y_train_)
+fix/issue-229-memory-leak
+        probas = []
+        
+        # 1. Ensure these are defined before the loop
+        p_norm = self.dna_.get('p', 2.0)
+        
+        for i in range(0, len(X), batch_size):
+            end = min(i + batch_size, len(X))
+            batch_te = cp.asarray(X[i:end], dtype=cp.float32)
+            
+            # --- OPTIMIZED BATCH LOGIC ---
+            # Replaces the massive broadcasting 'diff' with memory-efficient cdist
+            dists = cdist(batch_te, X_tr_g, metric='minkowski', p=p_norm)
+        
 
         n_test    = len(X_te_g)
         n_classes = len(self.classes_)
@@ -297,6 +315,7 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
 
             diff      = cp.abs(batch_te[:, None, :] - X_tr_g[None, :, :])
             dists     = cp.power(cp.sum(cp.power(diff, p_norm), axis=2), 1.0 / p_norm)
+
             top_k_idx = cp.argsort(dists, axis=1)[:, :self.k]
             row_idx   = cp.arange(len(batch_te))[:, None]
             top_dists = dists[row_idx, top_k_idx]              # (B, k)
@@ -321,13 +340,30 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
             total_energy = cp.sum(batch_probs, axis=1, keepdims=True)
             total_energy[total_energy == 0] = 1.0
             batch_probs /= total_energy
+ fix/issue-229-memory-leak
+            # -----------------------------
+
+            probas.append(cp.asnumpy(batch_probs))
+            
+            # Cleanup
+            del batch_te, dists, top_k_idx, top_dists, top_y, w, cosine_term, batch_probs, total_energy
+
             probas.append(cp.asnumpy(batch_probs))
             del batch_te, dists, diff, top_k_idx, top_dists, w, cosine_term
             probas.append(batch_probs)
 
             del batch_te, dists, diff, top_k_idx, top_dists, gauss
             cp.get_default_memory_pool().free_all_blocks()
+                
+        return np.concatenate(probas)
 
+ fix/issue-229-memory-leak
+    def _predict_proba_cpu(self, X):
+        # Your existing CPU fallback logic here...
+        pass
+        """NumPy fallback for predict_proba when CuPy/GPU is unavailable.
+        Mirrors _predict_proba_gpu exactly, using np instead of cp.
+=======
         import numpy as np
         return np.concatenate(probas)
     def _predict_proba_cpu(self, X):
@@ -351,6 +387,7 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         - np.argpartition (O(N)) replaces np.argsort (O(N log N)) — only the
           k smallest distances matter, not full sorted order.
         - Gaussian term computed once outside the per-class loop.
+
         """
         X_train = self.X_train_.astype(np.float32)
         X_test  = np.asarray(X, dtype=np.float32)
@@ -406,7 +443,12 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
             total_energy = np.sum(batch_probs, axis=1, keepdims=True)
             total_energy[total_energy == 0] = 1.0
             batch_probs /= total_energy
+fix/issue-229-memory-leak
+
+            probas.append(cp.asnumpy(batch_probs))
+=======
             probas.append(batch_probs)
+ gssoc-2026
 
         return np.concatenate(probas)
  
@@ -1343,7 +1385,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         # REPORT THE HIERARCHY
         if self.verbose:
             print("-" * 50)
-            print("   >>> THE COUNCIL WEIGHTS <<<")
+            print("  THE COUNCIL WEIGHTS ")
             # 16 names — must match all_units order in both fit() and predict_proba():
             # other_units[0..12] = ET, RF, HG, XG1, XG2, NuSVC, PolySVC,
             #                      KNN-Euc, KNN-Man, QDA, CalibSVC, GoldenPhi, Gravity

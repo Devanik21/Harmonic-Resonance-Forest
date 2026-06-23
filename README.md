@@ -456,7 +456,8 @@ To help users and researchers understand the physics-informed classification mec
 
 ## 🛠️ Development Environment
 
-**Hardware:** Standard consumer laptop + NVIDIA GPU Support
+**Hardware:** Standard consumer laptop + NVIDIA GPU Support.
+*(For CPU-only environments, refer to the [CPU Fallback Workflow](docs/cpu_fallback.md))*
 
 **Software:** Python 3.11, NVIDIA RAPIDS (cuML), CuPy, scikit-learn
 
