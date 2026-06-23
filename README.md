@@ -445,7 +445,8 @@ I validated HRF across diverse datasets to prove generalization, culminating in 
 
 ## 🛠️ Development Environment
 
-**Hardware:** Standard consumer laptop + NVIDIA GPU Support
+**Hardware:** Standard consumer laptop + NVIDIA GPU Support.
+*(For CPU-only environments, refer to the [CPU Fallback Workflow](docs/cpu_fallback.md))*
 
 **Software:** Python 3.11, NVIDIA RAPIDS (cuML), CuPy, scikit-learn
 
