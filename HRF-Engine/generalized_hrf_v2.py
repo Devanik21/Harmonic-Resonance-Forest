@@ -25,6 +25,10 @@ from cupyx.scipy.spatial.distance import cdist
 from typing import Dict, List, Optional, Union, Any
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin gssoc-2026
+import numpy.typing as npt
+from typing import Dict, List, Optional, Union, Any
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.ensemble import ExtraTreesClassifier
 from xgboost import XGBClassifier
 from sklearn.preprocessing import RobustScaler, PowerTransformer, StandardScaler
@@ -257,6 +261,14 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         self.dna_ = best_dna
         return best_acc
 
+    def predict_proba(self, X):
+        if self.projector_ is not None: X_curr = self.projector_.transform(X)
+        else: X_curr = X
+        if GPU_AVAILABLE: return self._predict_proba_gpu(X_curr)
+        else: return self._predict_proba_cpu(X_curr)
+
+    def _predict_proba_gpu(self, X: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+        X_tr_g = cp.asarray(self.X_train_, dtype=cp.float32)
     def _predict_proba_gpu(self, X):
         """
         CuPy (GPU) implementation of the HRF wave-potential kernel.
