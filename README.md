@@ -566,3 +566,799 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 
 ---
+# 🔬 Core Innovation: Phase-Invariant Classification
+
+Traditional machine learning algorithms often rely on the exact temporal position of features within a signal. Even small phase shifts or timing variations can reduce classification performance.
+
+**Harmonic Resonance Fields (HRF)** approaches this problem differently by transforming signals into a resonance-based representation that focuses on frequency energy rather than absolute temporal alignment.
+
+Instead of asking **"Where did the pattern occur?"**, HRF asks **"What harmonic energy does the signal contain?"**
+
+This makes the framework naturally resistant to temporal jitter, sensor delays, and phase shifts commonly encountered in biomedical signal processing.
+
+---
+
+## Scientific Intuition
+
+Imagine pushing a playground swing.
+
+Whether you start pushing at exactly 12:00:00 or a fraction of a second later, the swing resonates at nearly the same natural frequency.
+
+Similarly, EEG signals may shift slightly in time due to electrode movement or biological variability, yet the underlying neural oscillation remains unchanged.
+
+HRF detects this underlying resonance instead of memorizing the signal's exact temporal location.
+
+---
+
+## Why This Matters
+
+Traditional models frequently experience degraded performance when signals become temporally misaligned.
+
+HRF instead analyzes resonance energy in the frequency domain, allowing it to preserve predictive performance under realistic signal perturbations.
+
+This property is especially valuable in:
+
+- EEG analysis
+- Brain-computer interfaces
+- Biomedical sensors
+- Audio processing
+- Seismic monitoring
+- Radar and sonar applications
+
+---
+
+## 🧪 Phase I — Benchmark Validation on Real EEG Data
+
+The first experimental phase evaluates HRF on the **EEG Eye State Corpus (OpenML Dataset 1471)** and compares its performance against widely adopted machine learning algorithms.
+
+### Objective
+
+Demonstrate that Harmonic Resonance Fields achieve competitive or superior classification accuracy on real-world EEG data.
+
+### Dataset
+
+- OpenML Dataset 1471
+- EEG Eye State Corpus
+- 14 EEG Channels
+- 14,980 Samples
+- Binary Classification (Eyes Open / Eyes Closed)
+
+### Compared Models
+
+- Random Forest
+- Extra Trees
+- XGBoost
+- HRF v15.0
+- HRF v16.0 (Experimental)
+
+---
+
+### Summary of Results
+
+| Model | Accuracy |
+|--------|----------|
+| HRF v16.0 (Experimental) | **98.93%** |
+| HRF v15.0 (Stable) | **98.84%** |
+| Extra Trees | 94.49% |
+| Random Forest | 93.09% |
+| XGBoost | 92.99% |
+
+---
+
+### Interpretation
+
+The benchmark demonstrates that the resonance-based approach consistently outperforms conventional ensemble methods on this EEG classification task.
+
+Rather than relying solely on statistical partitioning, HRF models feature interactions through wave interference and resonance dynamics, enabling improved discrimination of EEG states.
+
+---
+
+## 🧪 Phase II — Neural Perturbation Stress Test (Temporal Jitter)
+
+Real biomedical signals are rarely perfectly aligned.
+
+Electrode displacement, subject movement, recording artifacts, and hardware latency introduce temporal perturbations that can significantly affect conventional machine learning models.
+
+To evaluate robustness under these conditions, synthetic EEG signals were generated with controlled temporal jitter before applying Fast Fourier Transform (FFT) based preprocessing.
+
+---
+
+### Objective
+
+Evaluate the ability of HRF to maintain classification accuracy despite increasing temporal misalignment.
+
+---
+
+### Experimental Setup
+
+Signal perturbations were introduced by progressively increasing temporal jitter before classification.
+
+Each model was evaluated under identical conditions.
+
+Models compared:
+
+- Random Forest
+- Gradient Boosting
+- Support Vector Machine (RBF)
+- K-Nearest Neighbors
+- XGBoost
+- HRF v12.5 (Spectral)
+
+---
+
+### Phase II Results
+
+| Model | Accuracy |
+|--------|----------|
+| HRF v12.5 (Spectral) | **96.40%** |
+| SVM (RBF) | 95.20% |
+| KNN | 92.80% |
+| XGBoost | 76.80% |
+| Random Forest | 76.40% |
+| Gradient Boosting | 71.20% |
+
+---
+
+### Discussion
+
+The spectral transformation employed by HRF substantially reduces sensitivity to temporal shifts.
+
+While ensemble tree methods experienced large performance degradation, HRF maintained strong predictive capability by operating on resonance characteristics rather than raw temporal positions.
+
+These findings support the hypothesis that resonance-based representations provide improved robustness for biomedical time-series analysis.
+
+---
+
+### Phase II Benchmark Visualization
+
+*(Keep your original image exactly as in the repository.)*
+
+```html
+<img width="1089" height="590" alt="download" src="https://github.com/user-attachments/assets/855ecf32-467e-4c59-8c07-4223ffd7aad6" />
+```
+
+---
+
+```html
+<img width="1189" height="590" alt="download" src="https://github.com/user-attachments/assets/26b4e1e7-aae5-4f0b-9e0c-7bf2567ef3d8" />
+```
+
+---
+
+## 🧪 Phase III — Survival Curve: Accuracy vs. Chaos
+
+Phase III extends the previous experiment by progressively increasing temporal jitter across multiple levels to evaluate long-term robustness.
+
+Instead of evaluating performance at a single perturbation level, this phase observes how rapidly each model degrades as signal uncertainty increases.
+
+---
+
+### Objective
+
+Measure classification stability under progressively increasing temporal chaos.
+
+---
+
+### Experimental Configuration
+
+Jitter magnitude was gradually increased from **0.00** to **2.00** seconds.
+
+All competing models were evaluated using identical synthetic EEG datasets.
+
+---
+
+### Results
+
+| Jitter | HRF | Random Forest | SVM | KNN | XGBoost |
+|---------|-----|---------------|------|------|---------|
+| 0.00 | 94.67% | 94.67% | 99.33% | 98.00% | 94.00% |
+| 0.25 | 96.67% | 94.67% | 100.00% | 93.33% | 86.67% |
+| 0.50 | 94.67% | 82.67% | 93.33% | 94.67% | 80.00% |
+| 0.75 | 95.33% | 66.67% | 86.00% | 91.33% | 67.33% |
+| 1.00 | 96.67% | 61.33% | 84.67% | 95.33% | 60.00% |
+| 1.25 | 94.00% | 58.67% | 78.00% | 84.00% | 54.67% |
+| 1.50 | 86.67% | 64.00% | 80.00% | 82.00% | 63.33% |
+| 1.75 | 92.00% | 62.67% | 84.00% | 83.33% | 62.00% |
+| 2.00 | 90.00% | 60.00% | 81.33% | 78.00% | 61.33% |
+
+---
+
+### Analysis
+
+As temporal perturbation increases, conventional ensemble methods exhibit rapid degradation.
+
+HRF maintains comparatively high accuracy across the majority of perturbation levels, demonstrating resilience against phase uncertainty.
+
+This behavior supports the central design philosophy of Harmonic Resonance Fields: representing signals through resonance energy rather than temporal alignment.
+
+---
+
+### Survival Curve
+
+*(Keep your existing figure unchanged.)*
+
+```html
+<img width="989" height="590" alt="download" src="https://github.com/user-attachments/assets/024fe837-c788-4413-b5e2-8ac05f82fc41" />
+```
+
+---
+
+### Comparative Line Graph
+
+```html
+<img width="867" height="553" alt="download" src="https://github.com/user-attachments/assets/c09bea3a-ac31-4071-b410-31ff0acd8275" />
+```
+
+---
+
+## 📌 Overall Experimental Conclusions
+
+Across all three experimental phases, HRF consistently demonstrates strong predictive performance and robustness.
+
+Key observations include:
+
+- Superior benchmark performance on real EEG datasets.
+- Strong resilience against temporal perturbations.
+- Improved stability under increasing phase uncertainty.
+- Competitive generalization across both synthetic and real-world biomedical datasets.
+
+Collectively, these experiments support the hypothesis that resonance-based machine learning provides a promising alternative to conventional statistical classifiers for complex physiological signal analysis.
+
+---
+# 📈 Algorithm Evolution: From v1.0 to v16.0
+
+The Harmonic Resonance Fields (HRF) framework evolved through continuous experimentation, hypothesis testing, and validation across synthetic and real-world datasets.
+
+Each version introduced new physical principles, optimization strategies, or architectural improvements aimed at improving robustness, interpretability, and classification performance.
+
+---
+
+## Version Progression
+
+| Version | Dataset / Context | HRF Accuracy | Best Competitor | Competitor Accuracy | Major Improvement |
+|----------|------------------|-------------|----------------|--------------------|-------------------|
+| v1.0 | Moons Dataset | 91.11% | KNN | 97.78% | Initial resonance concept |
+| v2.0 | Moons + sklearn API | 95.56% | KNN | 97.78% | Added gamma & decay parameters |
+| v3.0 | Quantum Phase Model | 96.67% | KNN | 97.78% | Auto scaling & phase parameter |
+| **v4.0** | Sparse Resonance | **98.89%** | KNN | 97.78% | Sparse approximation |
+| v5.0 | DeepMind Arena | 92.04% | KNN | 92.96% | Automatic frequency tuning |
+| v6.0 | Medical Benchmarks | 87.51% | RF | 90.11% | Wide-band optimization |
+| **v7.0** | Harmonic Forest | **87.40%** | RF | 84.00% | Ensemble resonance forests |
+| v7.2 | Simulated ECG | 99.67% | RF | 99.00% | Medical optimization |
+| v7.2 | Chaotic Phase Engine | 98.33% | RF | 99.44% | Extreme robustness testing |
+| v7.2 | Synthetic EEG | 85.56% | RF | 72.22% | Neural perturbation handling |
+| **v7.2** | OpenML EEG | **94.99%** | XGBoost | 93.12% | First victory on real EEG |
+| **v10.0** | OpenML EEG | **95.99%** | XGBoost | 93.12% | Self-evolving parameters |
+| **v10.5** | OpenML EEG | **96.45%** | RF | 92.92% | Alpha-wave optimization |
+| **v11.0** | OpenML EEG | **96.76%** | RF | 93.09% | Neuro-adaptive weighting |
+| **v12.0** | OpenML EEG | **97.53%** | ET | 94.49% | Holographic differential |
+| **v12.5** | OpenML EEG | **97.73%** | ET | 94.49% | Improved spectral robustness |
+| **v13.0** | OpenML EEG | **98.36%** | ET | 94.49% | Full holographic model |
+| **v14.0** | OpenML EEG | **98.46%** | ET | 94.49% | Final CPU optimization |
+| **v15.0** | OpenML EEG | **98.84%** | ET | 94.49% | GPU acceleration + K-Fold Validation |
+
+---
+
+# 🚀 HRF v15.0 — GPU Accelerated Stable Release
+
+Version **v15.0** represents the primary stable release of Harmonic Resonance Fields.
+
+Unlike earlier CPU implementations, this version introduces GPU acceleration together with comprehensive statistical validation.
+
+---
+
+## Computational Architecture
+
+Major enhancements include:
+
+- NVIDIA RAPIDS (cuML)
+- CuPy accelerated resonance kernels
+- GPU-based nearest-neighbor search
+- Parallel evolutionary parameter optimization
+- Five-fold stratified cross validation
+
+These improvements significantly reduce computational time while preserving deterministic evaluation procedures.
+
+---
+
+## Validation Metrics
+
+| Metric | Value |
+|---------|------|
+| Mean Accuracy | **98.12%** |
+| Peak Accuracy | **98.84%** |
+| Fold Variance | **±0.18%** |
+| ROC-AUC | **0.9849** |
+| F1 Score | **0.9836** |
+
+---
+
+### Clinical Reliability
+
+Performance remains balanced across both EEG classes.
+
+| Metric | Eye Open | Eye Closed |
+|---------|-----------|------------|
+| Precision | 0.98 | 0.99 |
+| Recall | 0.99 | 0.98 |
+
+These results indicate minimal class bias while maintaining strong predictive performance.
+
+---
+
+# 🧠 Decision Boundary Evolution
+
+The figures below illustrate the evolution of HRF decision boundaries across successive versions.
+
+*(Keep all original images exactly as they appear.)*
+
+```html
+<img width="1989" height="489" alt="download" src="https://github.com/user-attachments/assets/e2fcd24a-3a68-4a1c-b277-e12610350011" />
+```
+
+---
+
+```html
+<img width="1989" height="489" alt="download" src="https://github.com/user-attachments/assets/cd528d63-3606-42ac-81a1-d00cdfbe58d6" />
+```
+
+---
+
+```html
+<img width="2389" height="590" alt="download" src="https://github.com/user-attachments/assets/814841d7-6fa0-4918-94fc-3b49f5cae5fa" />
+```
+
+---
+
+# 🏥 Medical Validation
+
+The primary evaluation dataset is the **EEG Eye State Corpus (OpenML Dataset 1471).**
+
+---
+
+## Dataset Summary
+
+| Property | Value |
+|----------|------|
+| Source | OpenML |
+| Dataset ID | 1471 |
+| Samples | 14,980 |
+| EEG Channels | 14 |
+| Task | Eye Open vs Eye Closed |
+| Domain | Medical Signal Classification |
+
+---
+
+## Confusion Matrix Analysis
+
+The confusion matrices demonstrate the progressive improvement of class separation across HRF versions.
+
+---
+
+### HRF v15.0
+
+```html
+<img width="809" height="675" alt="download" src="https://github.com/user-attachments/assets/b2b9a9aa-b778-4014-86bc-82291fe54977" />
+```
+
+---
+
+```html
+<img width="847" height="785" alt="download" src="https://github.com/user-attachments/assets/2a2567b1-6225-41d5-8c84-2948d2766b35" />
+```
+
+---
+
+### HRF v14.0
+
+```html
+<img width="790" height="590" alt="download" src="https://github.com/user-attachments/assets/08a99191-68f6-42ae-8222-a63a14588383" />
+```
+
+---
+
+### HRF v12.0
+
+```html
+<img width="790" height="588" alt="download" src="https://github.com/user-attachments/assets/0a96606f-1ebf-4dde-afa9-2e574d4c90cb" />
+```
+
+---
+
+# 📊 Clinical Performance Metrics
+
+Based on the stable **v15.0** benchmark:
+
+| Metric | Value |
+|---------|-------|
+| Sensitivity | **98.07%** |
+| Specificity | **98.91%** |
+| False Alarm Rate | **1.09%** |
+| Fold Variance | **±0.18%** |
+
+These results suggest strong robustness and consistency across validation folds.
+
+---
+
+# 🔮 Future Horizon — HRF v16.x
+
+Version **v16.x** represents the experimental research branch.
+
+Although higher peak accuracy has been observed, additional work is required to improve stability across cross-validation folds.
+
+---
+
+## Current Experimental Results
+
+| Metric | Value |
+|---------|------|
+| Peak Accuracy | **98.93%** |
+| Mean CV Accuracy | **98.51%** |
+| Fold Variance | **±0.24%** |
+
+---
+
+### Current Research Goals
+
+- Resonance smoothing
+- Improved stability
+- Better fold consistency
+- Reduced variance
+- Generalization improvements
+
+The long-term objective is to combine the stability of v15.0 with the higher peak performance demonstrated by v16.x.
+
+---
+
+## Example Execution Log
+
+```text
+[INIT] Loading OpenML Dataset 1471...
+
+[Stage 1]
+Initializing Harmonic Resonance Fields...
+
+[Stage 2]
+Parallel Evolutionary Search...
+
+[Stage 3]
+Cross Validation...
+
+Fold 1 Accuracy: 98.63%
+Fold 2 Accuracy: 98.36%
+Fold 3 Accuracy: 98.93%
+Fold 4 Accuracy: 98.30%
+Fold 5 Accuracy: 98.33%
+
+-----------------------------------------
+Mean Accuracy : 98.51%
+Variance      : ±0.24%
+Peak Accuracy : 98.93%
+-----------------------------------------
+```
+
+---
+
+# 📌 Summary
+
+The evolution from **v1.0** to **v15.0** demonstrates a systematic progression from proof-of-concept resonance modeling to a GPU-accelerated framework validated on real-world biomedical datasets.
+
+The experimental **v16.x** branch continues to explore improvements in resonance optimization while maintaining the scientific principles established by the stable release.
+
+---
+# 🔧 Technical Architecture
+
+## Core Mathematical Framework
+
+The Harmonic Resonance Fields (HRF) classifier models each training sample as a damped harmonic oscillator that generates a class-specific resonance potential.
+
+\[
+\Psi(\mathbf{x}, \mathbf{p}_i)
+=
+\exp\left(
+-\gamma \left\|
+\mathbf{x}-\mathbf{p}_i
+\right\|^2
+\right)
+\cdot
+\cos
+\left(
+\omega_c
+\left\|
+\mathbf{x}-\mathbf{p}_i
+\right\|
++
+\varphi
+\right)
+\]
+
+Where:
+
+- **γ** controls Gaussian damping.
+- **ω** represents the harmonic resonance frequency.
+- **φ** is the resonance phase.
+- Classification is performed by selecting the class with the highest resonance energy.
+
+---
+
+## Core Components
+
+The HRF framework consists of several complementary stages:
+
+### • Bipolar Montage Preprocessing
+
+Differential signal extraction inspired by clinical EEG systems to suppress common-mode noise.
+
+### • Spectral Transformation
+
+Fast Fourier Transform (FFT) converts signals into the frequency domain where resonance becomes phase invariant.
+
+### • Evolutionary Parameter Search
+
+Automatic optimization of:
+
+- Resonance frequency
+- Damping coefficient
+- Neighbor count
+- Ensemble parameters
+
+### • Harmonic Forest Ensemble
+
+Multiple resonance classifiers are combined through bagging to improve robustness and generalization.
+
+### • Robust Feature Scaling
+
+Quantile-based normalization minimizes the influence of signal artifacts.
+
+---
+
+# 🎓 Research Validation
+
+HRF has been evaluated across progressively more challenging benchmark datasets.
+
+| Dataset | HRF Result | Best Baseline | Outcome |
+|----------|-----------|---------------|---------|
+| Synthetic Moons | 98.89% | KNN | Better |
+| Periodic Sine Waves | 87.40% | RF | Better |
+| Synthetic EEG | 85.56% | RF | Better |
+| **OpenML EEG** | **98.84%** | Extra Trees | **Best Overall** |
+
+These experiments demonstrate successful generalization from synthetic benchmark problems to real biomedical datasets.
+
+---
+
+# 🚀 Why HRF v15.0 Matters
+
+The stable v15.0 release demonstrates three major advances.
+
+## Proven Generalization
+
+Performance is validated through stratified five-fold cross validation rather than relying on a single train/test split.
+
+---
+
+## Physics-Informed Learning
+
+Instead of relying solely on statistical partitioning, HRF models classification through resonance and wave interference.
+
+---
+
+## GPU Accelerated Computing
+
+CUDA acceleration enables large-scale evolutionary optimization while preserving deterministic evaluation.
+
+---
+
+# 💡 Research Contributions
+
+The Harmonic Resonance Fields framework introduces several novel ideas:
+
+1. Resonance-based machine learning classification.
+2. Physics-inspired feature representation.
+3. Phase-invariant EEG analysis.
+4. GPU accelerated harmonic optimization.
+5. Open and reproducible research methodology.
+
+---
+
+# 🌍 Potential Applications
+
+## Healthcare
+
+- EEG analysis
+- Seizure detection
+- Sleep stage classification
+- Brain Computer Interfaces
+- Clinical decision support
+
+---
+
+## Signal Processing
+
+- Speech recognition
+- Radar and sonar
+- Audio analysis
+- Biomedical sensors
+
+---
+
+## Industrial Systems
+
+- Predictive maintenance
+- IoT monitoring
+- Fault diagnosis
+- Time-series anomaly detection
+
+---
+
+# 📚 Documentation
+
+Detailed documentation is organized inside the **docs/** directory.
+
+| Document | Description |
+|----------|-------------|
+| `01_architecture.md` | Complete architecture overview |
+| `02_pipeline_overview.md` | End-to-end processing pipeline |
+| `03_mathematical_framework.md` | Mathematical formulation |
+| `04_experiments/` | Experimental methodology |
+| `05_results_and_benchmarks.md` | Benchmark analysis |
+| `06_ablation_study.md` | Component contribution analysis |
+| `07_clinical_validation.md` | Medical validation |
+| `08_hrf_titan26_monograph.md` | Complete research monograph |
+
+---
+
+# 🛠 Development Environment
+
+### Hardware
+
+- NVIDIA GPU (recommended)
+- CUDA-compatible system
+
+### Software
+
+- Python 3.11+
+- RAPIDS cuML
+- CuPy
+- NumPy
+- Pandas
+- SciPy
+- Scikit-learn
+- Matplotlib
+
+---
+
+# 📬 Contact
+
+For research collaboration, academic discussion, or project contributions:
+
+**Email**
+
+devanik2005@gmail.com
+
+**LinkedIn**
+
+https://www.linkedin.com/in/devanik/
+
+**Twitter/X**
+
+https://x.com/devanik2005
+
+---
+
+# 🙏 Acknowledgments
+
+This work was independently developed as part of Electronics and Communication Engineering research.
+
+Special thanks to the open-source scientific computing community, including:
+
+- NumPy
+- SciPy
+- Scikit-learn
+- NVIDIA RAPIDS
+- CuPy
+- OpenML
+
+whose tools made this research possible.
+
+---
+
+# 📂 Appendix
+
+The following figures provide additional experimental evidence and implementation history.
+
+## Evolution of HRF
+
+*(Keep all original images exactly as they appear.)*
+
+```html
+<img width="989" height="490" src="https://github.com/user-attachments/assets/bcdedaea-c7a7-4bb7-b9c3-900218a480bd"/>
+```
+
+---
+
+```html
+<img width="1189" height="590" src="https://github.com/user-attachments/assets/7c48b7da-d7f7-4b91-b36d-e41296968aea"/>
+```
+
+---
+
+```html
+<img width="992" height="490" src="https://github.com/user-attachments/assets/b7bf119f-cd17-457b-ad61-fc291a859865"/>
+```
+
+---
+
+```html
+<img width="989" height="490" src="https://github.com/user-attachments/assets/bb103652-e1d7-451a-ab09-5c814524a7d0"/>
+```
+
+---
+
+```html
+<img width="1189" height="590" src="https://github.com/user-attachments/assets/d7fb3869-6e18-4dcb-92d1-75ace9cde0c4"/>
+```
+
+---
+
+```html
+<img width="1018" height="573" src="https://github.com/user-attachments/assets/2a066ab5-73a2-4fee-955e-d896f33d0bf0"/>
+```
+
+---
+
+```html
+<img width="989" height="590" src="https://github.com/user-attachments/assets/ea4003d1-7a7c-4baf-bfa7-33629803239c"/>
+```
+
+---
+
+```html
+<img width="989" height="589" src="https://github.com/user-attachments/assets/1e454e3a-956c-4641-a4fd-a34f9530f3d2"/>
+```
+
+---
+
+```html
+<img width="1190" height="690" src="https://github.com/user-attachments/assets/08411721-2605-4eca-baed-e982fa005faa"/>
+```
+
+---
+
+```html
+<img width="1384" height="797" src="https://github.com/user-attachments/assets/bfb11d0d-8951-4742-810f-7c25e8f516ca"/>
+```
+
+---
+
+## Phase Jitter Stress Tests
+
+### Survival Curve
+
+```html
+<img width="989" height="590" src="https://github.com/user-attachments/assets/024fe837-c788-4413-b5e2-8ac05f82fc41"/>
+```
+
+---
+
+### HRF vs Random Forest
+
+```html
+<img width="867" height="553" src="https://github.com/user-attachments/assets/c09bea3a-ac31-4071-b410-31ff0acd8275"/>
+```
+
+---
+
+# 📜 License
+
+This project is licensed under the **Apache License 2.0**.
+
+See the **LICENSE** file for additional details.
+
+---
+
+> **"When AI listens to the physics of the world, it unlocks unprecedented understanding."**
+
+---
+
+**Last Updated:** June 2026
