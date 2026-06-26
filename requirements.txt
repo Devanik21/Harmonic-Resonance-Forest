@@ -7,5 +7,13 @@ seaborn>=0.11.0
 xgboost>=2.0.0
 openml>=0.13.0
 
+
 # Optional: GPU acceleration (install separately if CUDA is available)
 # cupy-cuda11x>=10.0.0
+
+# Optional: GPU acceleration (v15.0+ — requires NVIDIA RAPIDS)
+# For CPU-only environments (the default fallback), no further installation is needed.
+# For CUDA 12.x (recommended): pip install cupy-cuda12x
+# For CUDA 11.x:               pip install cupy-cuda11x
+# For cuml (NVIDIA RAPIDS KNN): https://docs.rapids.ai/install
+
