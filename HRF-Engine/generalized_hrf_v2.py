@@ -337,8 +337,46 @@ from sklearn.utils.validation import check_X_y
 from sklearn.model_selection import train_test_split
 from scipy.optimize import minimize
 
-# --- 7. THE TITAN-14 "BEAST MODE" (Endgame Edition) ---
-class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
+# --- WAVE RESONANCE KERNEL ---
+def wave_resonance_kernel(X, Y):
+    """
+    Wavelet Resonance Kernel
+    Combines cosine resonance + wave decay
+    """
+
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+
+    dist = np.linalg.norm(X[:, np.newaxis] - Y, axis=2)
+
+    resonance = np.cos(2.5 * dist)
+    decay = np.exp(-0.5 * (dist ** 2))
+
+    return resonance * decay
+
+# --- FOURIER RESONANCE KERNEL ---
+def fourier_resonance_kernel(X, Y):
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+
+    from sklearn.metrics.pairwise import euclidean_distances
+    dist = euclidean_distances(X, Y)
+
+    return np.cos(2.0 * np.pi * dist) * np.exp(-0.3 * dist)
+
+# --- MORLET WAVELET KERNEL ---
+def morlet_wavelet_kernel(X, Y):
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+ 
+    from sklearn.metrics.pairwise import euclidean_distances
+    dist = euclidean_distances(X, Y)
+
+    omega = 5.0
+    return np.cos(omega * dist) * np.exp(-(dist ** 2) / 2)
+
+# --- 7. THE TITAN-18 "BEAST MODE" (Endgame Edition) ---
+class HarmonicResonanceClassifier_BEAST_18D(BaseEstimator, ClassifierMixin):
     def __init__(self, verbose=False):
         self.verbose = verbose
         # Robust scaling with wider quantile to catch outliers
@@ -346,7 +384,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         self.weights_ = None
         self.classes_ = None
 
-        # --- THE 14 BEASTS (Maximum Fidelity) ---
+        # --- THE 18 BEASTS (Maximum Fidelity) ---
 
         # 1. LOGIC ALPHA (The Overlord - ExtraTrees)
         self.unit_01 = ExtraTreesClassifier(n_estimators=1000, bootstrap=False,
@@ -376,6 +414,18 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
 
         # 7. KERNEL BETA (The Manifold - Poly SVC)
         self.unit_07 = SVC(kernel='poly', degree=2, C=10.0, probability=True, random_state=42)
+
+        # 15. KERNEL GAMMA (The Sigmoid - Neural Boundary)
+        self.unit_15 = SVC(kernel='sigmoid', C=1.0, gamma='scale', coef0=0.0, probability=True, random_state=42)
+
+        # 16. WAVE RESONANCE KERNEL (The Harmonic Field)
+        self.unit_16 = SVC(kernel=wave_resonance_kernel, C=1.0, probability=True, random_state=42)
+        
+        # 17. FOURIER RESONANCE KERNEL
+        self.unit_17 = SVC(kernel=fourier_resonance_kernel, C=1.0, probability=True, random_state=42)
+
+        # 18. MORLET WAVELET KERNEL
+        self.unit_18 = SVC(kernel=morlet_wavelet_kernel, C=1.0, probability=True, random_state=42)
 
         # 8. GEOMETRY ALPHA (The Cluster - Euclidean)
         self.unit_08 = KNeighborsClassifier(n_neighbors=3, weights='distance', metric='euclidean', n_jobs=-1)
@@ -418,7 +468,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
 
         if self.verbose:
             print("\n" + "!"*60)
-            print(" >>> HARMONIC RESONANCE FOREST: BEAST MODE (14D) INITIATED <<<")
+            print(" >>> HARMONIC RESONANCE FOREST: BEAST MODE (18D) INITIATED <<<")
             print("!"*60)
             print(" > Phase 1: Awakening the Souls (Evolutionary Adaptation)...")
 
@@ -456,9 +506,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
             print(" > Phase 2: Deploying Logic & Physics Units...")
 
         other_units = [
-            self.unit_01, self.unit_02, self.unit_03, self.unit_04,
-            self.unit_05, self.unit_06, self.unit_07, self.unit_08,
-            self.unit_09, self.unit_10, self.unit_11
+            self.unit_01, self.unit_02, self.unit_03, self.unit_04, self.unit_05, self.unit_06, self.unit_07, self.unit_15, self.unit_16, self.unit_17, self.unit_18, self.unit_08, self.unit_09, self.unit_10, self.unit_11
         ]
 
         for i, unit in enumerate(other_units):
@@ -468,13 +516,13 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
                 # Fallback for sensitive kernels
                 if self.verbose: print(f"   [Warning] Unit {i+1} adaptation issue: {e}")
                 # Re-initialize properly if failed
-                unit = SVC(kernel='rbf', C=1.0, probability=True)
-                unit.fit(X_evo_t, y_evo_t)
+                other_units[i] = SVC(kernel='rbf', C=1.0, probability=True)
+                other_units[i].fit(X_evo_t, y_evo_t)
 
 
         # --- STEP C: OPTIMIZATION (Finding the Perfect Consensus) ---
         if self.verbose:
-            print(" > Phase 3: The Council of 14 (Weight Optimization)...")
+            print(" > Phase 3: The Council of 18 (Weight Optimization)...")
 
         # Gather all units including the now-evolved souls
         all_units = other_units + [self.unit_12, self.unit_13, self.unit_14]
@@ -497,7 +545,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
             w = np.abs(w)
             w = w / np.sum(w)
             final_p = np.zeros_like(preds_proba[0])
-            for k in range(14):
+            for k in range(len(preds_proba)):
                 final_p += w[k] * preds_proba[k]
             # We use LogLoss for smooth gradients, but print Accuracy
             ll = log_loss(y_evo_v, np.clip(final_p, 1e-15, 1-1e-15))
@@ -511,7 +559,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         res = minimize(
             loss_func,
             init_weights,
-            bounds=[(0.0, 1.0)] * 14,
+            bounds=[(0.0, 1.0)] * len(init_weights),
             constraints={'type': 'eq', 'fun': lambda w: 1 - sum(w)},
             method='SLSQP'
         )
@@ -521,8 +569,8 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         if self.verbose:
             print("-" * 50)
             print("   >>> THE COUNCIL WEIGHTS <<<")
-            names = ["Logic-ET", "Logic-RF", "Logic-HG", "Grad-XG1", "Grad-XG2", "Nu-Warp",
-                     "PolyKer", "Geom-K3", "Geom-K9", "Space-QDA", "Resonance",
+            names = ["Logic-ET", "Logic-RF", "Logic-HG","Grad-XG1", "Grad-XG2", "Nu-Warp",
+                     "PolyKer", "Sigmoid-Kernel", "Wave-Resonance", "Fourier-Resonance", "Morlet-Wavelet", "Geom-K3", "Geom-K9", "Space-QDA", "Resonance",
                      "SOUL-EVO1", "SOUL-EVO2", "SOUL-EVO3"]
 
             # Sort by influence
@@ -552,10 +600,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         X_scaled = self.scaler_.transform(X)
 
         all_units = [
-            self.unit_01, self.unit_02, self.unit_03, self.unit_04,
-            self.unit_05, self.unit_06, self.unit_07, self.unit_08,
-            self.unit_09, self.unit_10, self.unit_11,
-            self.unit_12, self.unit_13, self.unit_14
+            self.unit_01, self.unit_02, self.unit_03, self.unit_04, self.unit_05, self.unit_06, self.unit_07, self.unit_15, self.unit_16, self.unit_17, self.unit_18, self.unit_08, self.unit_09, self.unit_10, self.unit_11, self.unit_12, self.unit_13, self.unit_14
         ]
 
         final_pred = None
@@ -580,7 +625,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
 
 def HarmonicResonanceForest_Ultimate(n_estimators=None):
-    return HarmonicResonanceClassifier_BEAST_14D(verbose=True)
+    return HarmonicResonanceClassifier_BEAST_18D(verbose=True)
 
 from sklearn.datasets import fetch_openml
 from sklearn.pipeline import make_pipeline
