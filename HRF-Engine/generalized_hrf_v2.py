@@ -347,7 +347,8 @@ def wave_resonance_kernel(X, Y):
     X = np.asarray(X)
     Y = np.asarray(Y)
 
-    dist = np.linalg.norm(X[:, np.newaxis] - Y, axis=2)
+    from sklearn.metrics.pairwise import euclidean_distances
+    dist = euclidean_distances(X, Y)
 
     resonance = np.cos(2.5 * dist)
     decay = np.exp(-0.5 * (dist ** 2))
@@ -505,9 +506,10 @@ class HarmonicResonanceClassifier_BEAST_18D(BaseEstimator, ClassifierMixin):
         if self.verbose:
             print(" > Phase 2: Deploying Logic & Physics Units...")
 
-        other_units = [
-            self.unit_01, self.unit_02, self.unit_03, self.unit_04, self.unit_05, self.unit_06, self.unit_07, self.unit_15, self.unit_16, self.unit_17, self.unit_18, self.unit_08, self.unit_09, self.unit_10, self.unit_11
+        other_unit_names = [
+            "unit_01", "unit_02", "unit_03", "unit_04", "unit_05", "unit_06", "unit_07", "unit_15", "unit_16", "unit_17", "unit_18", "unit_08", "unit_09", "unit_10", "unit_11"
         ]
+        other_units = [getattr(self, name) for name in other_unit_names]
 
         for i, unit in enumerate(other_units):
             try:
@@ -516,8 +518,10 @@ class HarmonicResonanceClassifier_BEAST_18D(BaseEstimator, ClassifierMixin):
                 # Fallback for sensitive kernels
                 if self.verbose: print(f"   [Warning] Unit {i+1} adaptation issue: {e}")
                 # Re-initialize properly if failed
-                other_units[i] = SVC(kernel='rbf', C=1.0, probability=True)
-                other_units[i].fit(X_evo_t, y_evo_t)
+                fallback_unit = SVC(kernel='rbf', C=1.0, probability=True)
+                fallback_unit.fit(X_evo_t, y_evo_t)
+                other_units[i] = fallback_unit
+                setattr(self, other_unit_names[i], fallback_unit)
 
 
         # --- STEP C: OPTIMIZATION (Finding the Perfect Consensus) ---
