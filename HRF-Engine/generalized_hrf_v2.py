@@ -182,7 +182,22 @@ feature/memory-efficient-batching
     
         return self
 
+ testing
+    # 2. Online Update: Update internal kernels instead of storing data
+    # THIS is where you run your mathematical logic (e.g., resonance update)
+        self._update_resonance_kernels(X, y)
+    
+    # 3. CRITICAL: Clear memory
+    # This destroys the reference to the batch so the GPU can reclaim space
+        del X
+        del y
+        import cupy as cp
+        cp.get_default_memory_pool().free_all_blocks()
+    
+        return self
+=======
  fix/issue-229-memory-leak
+ gssoc-2026
 gssoc-2026
     def _apply_projection(self, X: npt.NDArray[np.float64]) -> None:
 
