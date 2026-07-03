@@ -142,6 +142,8 @@ def _stable_softmax(d: np.ndarray) -> np.ndarray:
 class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
     def __init__(self, k=15, random_state=None, freq=2.0, gamma=0.5,
                  power=2.0, p=2.0, phase=0.0, dim_reduction='none'):
+        self.X_train_ = None
+        self.y_train_ = None
         self.k = k
         self.random_state = random_state
         self.freq = freq
@@ -161,16 +163,27 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         self.projector_ = None
         self.X_raw_source_ = None
 
-    def fit(self, X: npt.NDArray[np.float64], y: npt.NDArray[np.int64]) -> 'HolographicSoulUnit':
-            """
-            Fit the resonance unit to training data.
-            """
-            self.classes_ = np.unique(y)
+    def partial_fit(self, X, y):
+    # 1. Initialization (only happens once)
+        if self.projector_ is None and self.dna_['dim_reduction'] != 'none':
             self._apply_projection(X)
-            self.y_train_ = y
-            return self
+
+feature/memory-efficient-batching
+    # 2. Online Update: Update internal kernels instead of storing data
+    # THIS is where you run your mathematical logic (e.g., resonance update)
+        self._update_resonance_kernels(X, y)
+    
+    # 3. CRITICAL: Clear memory
+    # This destroys the reference to the batch so the GPU can reclaim space
+        del X
+        del y
+        import cupy as cp
+        cp.get_default_memory_pool().free_all_blocks()
+    
+        return self
 
  fix/issue-229-memory-leak
+gssoc-2026
     def _apply_projection(self, X: npt.NDArray[np.float64]) -> None:
 
     def _apply_projection(self, X):
