@@ -168,6 +168,20 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         if self.projector_ is None and self.dna_['dim_reduction'] != 'none':
             self._apply_projection(X)
 
+feature/memory-efficient-batching
+    # 2. Online Update: Update internal kernels instead of storing data
+    # THIS is where you run your mathematical logic (e.g., resonance update)
+        self._update_resonance_kernels(X, y)
+    
+    # 3. CRITICAL: Clear memory
+    # This destroys the reference to the batch so the GPU can reclaim space
+        del X
+        del y
+        import cupy as cp
+        cp.get_default_memory_pool().free_all_blocks()
+    
+        return self
+
  testing
     # 2. Online Update: Update internal kernels instead of storing data
     # THIS is where you run your mathematical logic (e.g., resonance update)
@@ -184,6 +198,7 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
 =======
  fix/issue-229-memory-leak
  gssoc-2026
+gssoc-2026
     def _apply_projection(self, X: npt.NDArray[np.float64]) -> None:
 
     def _apply_projection(self, X):
@@ -1121,6 +1136,48 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
             fitted models and non-EEG datasets.
         """
 
+# --- WAVE RESONANCE KERNEL ---
+def wave_resonance_kernel(X, Y):
+    """
+    Wavelet Resonance Kernel
+    Combines cosine resonance + wave decay
+    """
+
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+
+    from sklearn.metrics.pairwise import euclidean_distances
+    dist = euclidean_distances(X, Y)
+
+    resonance = np.cos(2.5 * dist)
+    decay = np.exp(-0.5 * (dist ** 2))
+
+    return resonance * decay
+
+# --- FOURIER RESONANCE KERNEL ---
+def fourier_resonance_kernel(X, Y):
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+
+    from sklearn.metrics.pairwise import euclidean_distances
+    dist = euclidean_distances(X, Y)
+
+    return np.cos(2.0 * np.pi * dist) * np.exp(-0.3 * dist)
+
+# --- MORLET WAVELET KERNEL ---
+def morlet_wavelet_kernel(X, Y):
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+ 
+    from sklearn.metrics.pairwise import euclidean_distances
+    dist = euclidean_distances(X, Y)
+
+    omega = 5.0
+    return np.cos(omega * dist) * np.exp(-(dist ** 2) / 2)
+
+# --- 7. THE TITAN-18 "BEAST MODE" (Endgame Edition) ---
+class HarmonicResonanceClassifier_BEAST_18D(BaseEstimator, ClassifierMixin):
+    def __init__(self, verbose=False):
 # --- 7. THE TITAN-14 "BEAST MODE" (Endgame Edition) ---
 class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
     def __init__(self, verbose=False, use_holographic_diff=False):
@@ -1133,7 +1190,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         # Holographic transformer — instantiated once; fitted lazily in fit()
         self._holo_transformer = HolographicDifferentialTransformer(clip_range=15.0)
 
-        # --- THE 14 BEASTS (Maximum Fidelity) ---
+        # --- THE 18 BEASTS (Maximum Fidelity) ---
 
         # 1. LOGIC ALPHA (The Overlord - ExtraTrees)
         self.unit_01 = ExtraTreesClassifier(n_estimators=1000, bootstrap=False,
@@ -1163,6 +1220,18 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
 
         # 7. KERNEL BETA (The Manifold - Poly SVC)
         self.unit_07 = SVC(kernel='poly', degree=2, C=10.0, probability=True, random_state=42)
+
+        # 15. KERNEL GAMMA (The Sigmoid - Neural Boundary)
+        self.unit_15 = SVC(kernel='sigmoid', C=1.0, gamma='scale', coef0=0.0, probability=True, random_state=42)
+
+        # 16. WAVE RESONANCE KERNEL (The Harmonic Field)
+        self.unit_16 = SVC(kernel=wave_resonance_kernel, C=1.0, probability=True, random_state=42)
+        
+        # 17. FOURIER RESONANCE KERNEL
+        self.unit_17 = SVC(kernel=fourier_resonance_kernel, C=1.0, probability=True, random_state=42)
+
+        # 18. MORLET WAVELET KERNEL
+        self.unit_18 = SVC(kernel=morlet_wavelet_kernel, C=1.0, probability=True, random_state=42)
 
         # 8. GEOMETRY ALPHA (The Cluster - Euclidean)
         self.unit_08 = KNeighborsClassifier(n_neighbors=3, weights='distance', metric='euclidean', n_jobs=-1)
@@ -1295,7 +1364,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
 
         if self.verbose:
             print("\n" + "!"*60)
-            print(" >>> HARMONIC RESONANCE FOREST: BEAST MODE (14D) INITIATED <<<")
+            print(" >>> HARMONIC RESONANCE FOREST: BEAST MODE (18D) INITIATED <<<")
             print("!"*60)
             print(" > Phase 1: Awakening the Souls (Evolutionary Adaptation)...")
 
@@ -1332,12 +1401,15 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         if self.verbose:
             print(" > Phase 2: Deploying Logic & Physics Units...")
 
+        other_unit_names = [
+            "unit_01", "unit_02", "unit_03", "unit_04", "unit_05", "unit_06", "unit_07", "unit_15", "unit_16", "unit_17", "unit_18", "unit_08", "unit_09", "unit_10", "unit_11"
         other_units = [
             self.unit_01, self.unit_02, self.unit_03, self.unit_04,
             self.unit_05, self.unit_06, self.unit_07, self.unit_08,
             self.unit_09, self.unit_10, self.unit_11,
             self.unit_15, self.unit_16,   # Sector D physics units
         ]
+        other_units = [getattr(self, name) for name in other_unit_names]
 
         for i, unit in enumerate(other_units):
             try:
@@ -1346,13 +1418,15 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
                 # Fallback for sensitive kernels
                 if self.verbose: print(f"   [Warning] Unit {i+1} adaptation issue: {e}")
                 # Re-initialize properly if failed
-                unit = SVC(kernel='rbf', C=1.0, probability=True)
-                unit.fit(X_evo_t, y_evo_t)
+                fallback_unit = SVC(kernel='rbf', C=1.0, probability=True)
+                fallback_unit.fit(X_evo_t, y_evo_t)
+                other_units[i] = fallback_unit
+                setattr(self, other_unit_names[i], fallback_unit)
 
 
         # --- STEP C: OPTIMIZATION (Finding the Perfect Consensus) ---
         if self.verbose:
-            print(" > Phase 3: The Council of 14 (Weight Optimization)...")
+            print(" > Phase 3: The Council of 18 (Weight Optimization)...")
 
         # Gather all units including the now-evolved souls
         all_units = other_units + [self.unit_12, self.unit_13, self.unit_14]
@@ -1398,6 +1472,10 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         # REPORT THE HIERARCHY
         if self.verbose:
             print("-" * 50)
+            print("   >>> THE COUNCIL WEIGHTS <<<")
+            names = ["Logic-ET", "Logic-RF", "Logic-HG","Grad-XG1", "Grad-XG2", "Nu-Warp",
+                     "PolyKer", "Sigmoid-Kernel", "Wave-Resonance", "Fourier-Resonance", "Morlet-Wavelet", "Geom-K3", "Geom-K9", "Space-QDA", "Resonance",
+                     "SOUL-EVO1", "SOUL-EVO2", "SOUL-EVO3"]
             print("  THE COUNCIL WEIGHTS ")
             # 16 names — must match all_units order in both fit() and predict_proba():
             # other_units[0..12] = ET, RF, HG, XG1, XG2, NuSVC, PolySVC,
@@ -1459,6 +1537,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         X_scaled = self.scaler_.transform(X)
 
         all_units = [
+            self.unit_01, self.unit_02, self.unit_03, self.unit_04, self.unit_05, self.unit_06, self.unit_07, self.unit_15, self.unit_16, self.unit_17, self.unit_18, self.unit_08, self.unit_09, self.unit_10, self.unit_11, self.unit_12, self.unit_13, self.unit_14
             self.unit_01, self.unit_02, self.unit_03, self.unit_04,
             self.unit_05, self.unit_06, self.unit_07, self.unit_08,
             self.unit_09, self.unit_10, self.unit_11,
@@ -1488,7 +1567,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
 
 def HarmonicResonanceForest_Ultimate(n_estimators=None):
-    return HarmonicResonanceClassifier_BEAST_14D(verbose=True)
+    return HarmonicResonanceClassifier_BEAST_18D(verbose=True)
 
 from sklearn.datasets import fetch_openml
 from sklearn.pipeline import make_pipeline
