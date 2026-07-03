@@ -1,4 +1,5 @@
 import os
+import os
 import pandas as pd
 
 benchmark_results = {
@@ -162,6 +163,7 @@ df = pd.DataFrame(results)
 print("\n===== HRF vs SVM Comparison =====\n")
 print(df)
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
 script_dir = os.path.dirname(os.path.abspath(__file__))
 df.to_csv(
     os.path.join(script_dir, "hrf_vs_svm_results.csv"),

@@ -1,0 +1,14 @@
+numpy>=1.21.0
+pandas>=1.3.0
+scipy>=1.7.0
+scikit-learn>=1.2.0
+matplotlib>=3.4.0
+seaborn>=0.11.0
+xgboost>=2.0.0
+openml>=0.13.0
+
+# Optional: GPU acceleration (v15.0+ — requires NVIDIA RAPIDS)
+# For CPU-only environments (the default fallback), no further installation is needed.
+# For CUDA 12.x (recommended): pip install cupy-cuda12x
+# For CUDA 11.x:               pip install cupy-cuda11x
+# For cuml (NVIDIA RAPIDS KNN): https://docs.rapids.ai/install
