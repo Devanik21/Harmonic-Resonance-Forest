@@ -89,7 +89,7 @@ def _try_import_soundfile():
         import soundfile  # noqa: PLC0415
 
         return soundfile
-    except ImportError:
+    except (ImportError, OSError):
         return None
 
 
@@ -98,7 +98,7 @@ def _try_import_librosa():
         import librosa  # noqa: PLC0415
 
         return librosa
-    except ImportError:
+    except (ImportError, OSError):
         return None
 
 
