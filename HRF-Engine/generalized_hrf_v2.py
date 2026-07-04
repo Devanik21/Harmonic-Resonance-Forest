@@ -17,6 +17,8 @@ import pandas as pd
 import warnings
 import cupy as cp
 import time
+import torch
+import cupy as cp
 import numpy.typing as npt
 from cupyx.scipy.spatial.distance import cdist
 from typing import Dict, List, Optional, Union, Any
@@ -75,23 +77,34 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         self.projector_ = None
         self.X_raw_source_ = None
 
+
+
     def partial_fit(self, X, y):
-    # 1. Initialization (only happens once)
+        # 1. Initialization
         if self.projector_ is None and self.dna_['dim_reduction'] != 'none':
             self._apply_projection(X)
 
-    # 2. Online Update: Update internal kernels instead of storing data
-    # THIS is where you run your mathematical logic (e.g., resonance update)
+        # 2. Online Update
         self._update_resonance_kernels(X, y)
-    
-    # 3. CRITICAL: Clear memory
-    # This destroys the reference to the batch so the GPU can reclaim space
-        del X
-        del y
-        import cupy as cp
+        
+        # 3. Aggressive Memory Cleanup
+        del X, y
+        
+        # Clear both framework pools to be safe
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
         cp.get_default_memory_pool().free_all_blocks()
-    
+        
         return self
+
+    def train_large_dataset(model, X_full, y_full, batch_size=1024):
+    for i in range(0, len(X_full), batch_size):
+        X_batch = X_full[i:i + batch_size]
+        y_batch = y_full[i:i + batch_size]
+        model.partial_fit(X_batch, y_batch)
+    print("Training complete!")
+    
     def _apply_projection(self, X: npt.NDArray[np.float64]) -> None:
         if self.dna_['dim_reduction'] == 'holo':
             n_components = max(2, int(np.sqrt(X.shape[1])))
