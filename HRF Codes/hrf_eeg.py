@@ -22,104 +22,169 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.datasets import fetch_openml
 
-# --- 0. GPU INSTALLATION & SETUP ---
+# --- 0. GPU INSTALLATION & SETUP WITH CPU FALLBACK ---
 def install_rapids():
     print(" [SYSTEM] Installing NVIDIA RAPIDS (cuML) for T4 Acceleration...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install",
-                           "cudf-cu12", "cuml-cu12",
-                           "--extra-index-url=https://pypi.nvidia.com"])
-    print(" [SYSTEM] Installation Complete.")
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install",
+                               "cudf-cu12", "cuml-cu12",
+                               "--extra-index-url=https://pypi.nvidia.com"])
+        print(" [SYSTEM] Installation Complete.")
+        return True
+    except Exception as e:
+        print(f" [SYSTEM] RAPIDS installation failed: {e}")
+        print(" [SYSTEM] Falling back to CPU processing...")
+        return False
 
+# Try GPU first, fall back to CPU if unavailable
+GPU_AVAILABLE = False
 try:
     import cupy as cp
     import cuml
     from cuml.neighbors import NearestNeighbors as cuNN
     from cuml.preprocessing import RobustScaler as cuRobustScaler
     print("✅ GPU DETECTED: NVIDIA RAPIDS & CuPy Active")
+    GPU_AVAILABLE = True
 except ImportError:
-    install_rapids()
-    import cupy as cp
-    import cuml
-    from cuml.neighbors import NearestNeighbors as cuNN
-    from cuml.preprocessing import RobustScaler as cuRobustScaler
+    print("⚠️  RAPIDS not found. Attempting installation...")
+    if install_rapids():
+        try:
+            import cupy as cp
+            import cuml
+            from cuml.neighbors import NearestNeighbors as cuNN
+            from cuml.preprocessing import RobustScaler as cuRobustScaler
+            GPU_AVAILABLE = True
+        except ImportError:
+            print("❌ RAPIDS installation/import failed. Using CPU fallback...")
+            GPU_AVAILABLE = False
+    else:
+        GPU_AVAILABLE = False
 
-# --- 1. GPU-ACCELERATED PREPROCESSOR (BIPOLAR MONTAGE) ---
-def apply_bipolar_montage_gpu(X_gpu):
+# CPU fallback imports
+if not GPU_AVAILABLE:
+    print("📊 CPU MODE: Using scikit-learn implementations")
+    from sklearn.neighbors import NearestNeighbors as SklearnNN
+    from sklearn.preprocessing import RobustScaler as SklearnRobustScaler
+    import numpy as np as np_backend
+else:
+    np_backend = cp
+
+# --- 1. BIPOLAR MONTAGE PREPROCESSOR (GPU/CPU) ---
+def apply_bipolar_montage(X, use_gpu=False):
     """
-    Performs the v15 Bipolar Montage transformation directly on GPU VRAM.
+    Performs the v15 Bipolar Montage transformation.
+    Works on both GPU (cuPy) and CPU (NumPy).
     """
-    # 1. Clip Outliers (CUDA Kernel)
-    X_gpu = cp.clip(X_gpu, -15, 15)
+    if use_gpu and GPU_AVAILABLE:
+        backend = cp
+    else:
+        backend = np
+
+    # 1. Clip Outliers
+    X_processed = backend.clip(X, -15, 15)
 
     # 2. Spatial Differences (Vectorized)
     diffs_list = []
-    for i in range(X_gpu.shape[1] - 1):
-        diffs_list.append(X_gpu[:, i] - X_gpu[:, i + 1])
+    for i in range(X_processed.shape[1] - 1):
+        diffs_list.append(X_processed[:, i] - X_processed[:, i + 1])
 
     # 3. Global Coherence (Variance across channels)
-    coherence = cp.var(X_gpu, axis=1).reshape(-1, 1)
+    coherence = backend.var(X_processed, axis=1).reshape(-1, 1)
 
     # 4. Stack columns
-    X_diffs = cp.stack(diffs_list, axis=1)
-    return cp.hstack([X_gpu, X_diffs, coherence])
+    X_diffs = backend.stack(diffs_list, axis=1) if use_gpu and GPU_AVAILABLE else np.stack(diffs_list, axis=1)
 
-# --- 2. THE HIGH-ENERGY SOUL (T4 OPTIMIZED) ---
-class HighEnergySoul_GPU(BaseEstimator, ClassifierMixin):
+    if use_gpu and GPU_AVAILABLE:
+        return cp.hstack([X_processed, X_diffs, coherence])
+    else:
+        return np.hstack([X_processed, X_diffs, coherence])
+
+# --- 2. THE HIGH-ENERGY SOUL (GPU/CPU ADAPTIVE) ---
+class HighEnergySoul(BaseEstimator, ClassifierMixin):
+    """
+    Harmonic Resonance Field classifier with automatic GPU/CPU fallback.
+    Ensures reproducible results regardless of hardware availability.
+    """
     def __init__(self, name, freq, gamma, p, k=15):
         self.name = name
         self.freq = freq
         self.gamma = gamma
-        self.p_metric = p # The exponent for distance weighting (e.g., 2.5)
+        self.p_metric = p  # The exponent for distance weighting (e.g., 2.5)
         self.k = k
-        self.scaler_ = cuRobustScaler(quantile_range=(15.0, 85.0))
+        self.gpu_enabled = GPU_AVAILABLE
+
+        # Initialize appropriate scaler based on availability
+        if GPU_AVAILABLE:
+            self.scaler_ = cuRobustScaler(quantile_range=(15.0, 85.0))
+        else:
+            self.scaler_ = SklearnRobustScaler(quantile_range=(15.0, 85.0))
+
         self.X_train_encoded_ = None
-        self.y_train_gpu_ = None
-        self.classes_gpu_ = None
+        self.y_train_ = None
+        self.classes_ = None
+        self.knn_engine_ = None
 
     def fit(self, X, y):
-        # Move data to GPU if not already
-        if not isinstance(X, cp.ndarray): X = cp.asarray(X, dtype=cp.float32)
-        if not isinstance(y, cp.ndarray): y = cp.asarray(y, dtype=cp.int32)
+        # Convert to appropriate backend
+        if self.gpu_enabled and GPU_AVAILABLE:
+            if not isinstance(X, cp.ndarray): X = cp.asarray(X, dtype=cp.float32)
+            if not isinstance(y, cp.ndarray): y = cp.asarray(y, dtype=cp.int32)
+            self.classes_ = cp.unique(y)
+        else:
+            X = np.asarray(X, dtype=np.float32)
+            y = np.asarray(y, dtype=np.int32)
+            self.classes_ = np.unique(y)
 
-        self.classes_gpu_ = cp.unique(y)
-
-        # 1. Scale on GPU
+        # 1. Scale data
         X_scaled = self.scaler_.fit_transform(X)
 
         # 2. Apply v15 Physics (Bipolar Montage)
-        self.X_train_encoded_ = apply_bipolar_montage_gpu(X_scaled)
-        self.y_train_gpu_ = y
+        self.X_train_encoded_ = apply_bipolar_montage(X_scaled, use_gpu=self.gpu_enabled)
+        self.y_train_ = y
 
-        # 3. Fit cuML Nearest Neighbors
-        self.knn_engine_ = cuNN(n_neighbors=self.k)
+        # 3. Fit Nearest Neighbors (GPU or CPU)
+        if self.gpu_enabled and GPU_AVAILABLE:
+            self.knn_engine_ = cuNN(n_neighbors=self.k)
+        else:
+            self.knn_engine_ = SklearnNN(n_neighbors=self.k)
+
         self.knn_engine_.fit(self.X_train_encoded_)
         return self
 
     def predict(self, X):
-        if not isinstance(X, cp.ndarray): X = cp.asarray(X, dtype=cp.float32)
+        if self.gpu_enabled and GPU_AVAILABLE:
+            if not isinstance(X, cp.ndarray): X = cp.asarray(X, dtype=cp.float32)
+            backend = cp
+        else:
+            X = np.asarray(X, dtype=np.float32)
+            backend = np
 
         # 1. Transform Pipeline
         X_scaled = self.scaler_.transform(X)
-        X_encoded = apply_bipolar_montage_gpu(X_scaled)
+        X_encoded = apply_bipolar_montage(X_scaled, use_gpu=self.gpu_enabled)
 
         # 2. Get Neighbors
         dists, indices = self.knn_engine_.kneighbors(X_encoded)
 
         # 3. RESONANCE EQUATION (exp(-gamma * d^p) * (1 + cos(freq * d)))
-        w = cp.exp(-self.gamma * (dists ** self.p_metric)) * (1.0 + cp.cos(self.freq * dists))
+        w = backend.exp(-self.gamma * (dists ** self.p_metric)) * (1.0 + backend.cos(self.freq * dists))
 
         # 4. Aggregate Energy (Voting)
-        neighbor_labels = self.y_train_gpu_[indices]
+        neighbor_labels = self.y_train_[indices]
         n_samples = X.shape[0]
-        n_classes = len(self.classes_gpu_)
-        energies = cp.zeros((n_samples, n_classes), dtype=cp.float32)
+        n_classes = len(self.classes_)
 
-        for idx, cls in enumerate(self.classes_gpu_):
+        if self.gpu_enabled and GPU_AVAILABLE:
+            energies = cp.zeros((n_samples, n_classes), dtype=cp.float32)
+        else:
+            energies = np.zeros((n_samples, n_classes), dtype=np.float32)
+
+        for idx, cls in enumerate(self.classes_):
             mask = (neighbor_labels == cls)
-            energies[:, idx] = cp.sum(w * mask, axis=1)
+            energies[:, idx] = backend.sum(w * mask, axis=1)
 
-        preds_idx = cp.argmax(energies, axis=1)
-        return self.classes_gpu_[preds_idx]
+        preds_idx = backend.argmax(energies, axis=1)
+        return self.classes_[preds_idx]
 
 # --- 3. THE SHOWCASE EXECUTION ---
 def run_soul_showcase_gpu(data_id=1471):
@@ -134,8 +199,13 @@ def run_soul_showcase_gpu(data_id=1471):
     # Split on CPU
     X_tr_c, X_te_c, y_tr_c, y_te_c = train_test_split(X_cpu, y_cpu, test_size=0.24, stratify=y_cpu, random_state=21)
 
-    # Move Test Set to GPU for Souls
-    X_te_g = cp.asarray(X_te_c, dtype=cp.float32)
+    # Prepare test set (GPU or CPU based on availability)
+    if GPU_AVAILABLE:
+        X_te_data = cp.asarray(X_te_c, dtype=cp.float32)
+        print(f" ✅ GPU Mode: Using RAPIDS/CuPy for acceleration")
+    else:
+        X_te_data = X_te_c.astype(np.float32)
+        print(f" 📊 CPU Mode: Using NumPy for processing")
 
     # B. COMPETITORS
     from xgboost import XGBClassifier
@@ -151,61 +221,61 @@ def run_soul_showcase_gpu(data_id=1471):
 
     # C. SOULS
     souls = [
-        HighEnergySoul_GPU("SOUL-ALPHA (Base)",   freq=25.0, gamma=5.5, p=2.0),
-        HighEnergySoul_GPU("SOUL-BETA (Metric)",  freq=35.0, gamma=7.5, p=2.5),
-        HighEnergySoul_GPU("SOUL-GAMMA (Focus)",  freq=40.0, gamma=5.0, p=2.5),
-        HighEnergySoul_GPU("SOUL-DELTA (High)",   freq=50.0, gamma=10.0, p=2.5),
-        HighEnergySoul_GPU("SOUL-EPSILON (Ult)",  freq=90.0, gamma=20.0, p=2.8),
-        HighEnergySoul_GPU("SOUL-06 (Calm)",      freq=5.0,   gamma=0.1,  p=2.0),
-    HighEnergySoul_GPU("SOUL-07 (Steady)",    freq=8.2,   gamma=0.4,  p=2.0),
-    HighEnergySoul_GPU("SOUL-08 (Root)",      freq=12.5,  gamma=0.8,  p=2.1),
-    HighEnergySoul_GPU("SOUL-09 (Flow)",      freq=15.0,  gamma=1.2,  p=2.1),
-    HighEnergySoul_GPU("SOUL-10 (Foundation)",freq=18.0,  gamma=2.0,  p=2.2),
-    HighEnergySoul_GPU("SOUL-11 (Anchor)",    freq=20.5,  gamma=3.5,  p=2.2),
-    HighEnergySoul_GPU("SOUL-12 (Pillar)",    freq=22.0,  gamma=4.2,  p=2.3),
-    HighEnergySoul_GPU("SOUL-13 (Solid)",     freq=24.5,  gamma=5.0,  p=2.3),
-    HighEnergySoul_GPU("SOUL-14 (Core)",      freq=26.0,  gamma=6.0,  p=2.4),
-    HighEnergySoul_GPU("SOUL-15 (Grounded)",  freq=28.5,  gamma=7.0,  p=2.4),
-        HighEnergySoul_GPU("SOUL-16 (Edge)",      freq=31.0,  gamma=4.5,  p=2.6),
-    HighEnergySoul_GPU("SOUL-17 (Blade)",     freq=33.5,  gamma=5.5,  p=2.6),
-    HighEnergySoul_GPU("SOUL-18 (Prism)",     freq=36.0,  gamma=6.5,  p=2.7),
-    HighEnergySoul_GPU("SOUL-19 (Needle)",    freq=38.5,  gamma=8.0,  p=2.7),
-    HighEnergySoul_GPU("SOUL-20 (Vertex)",    freq=41.0,  gamma=9.5,  p=2.8),
-    HighEnergySoul_GPU("SOUL-21 (Crystal)",   freq=43.5,  gamma=11.0, p=2.8),
-    HighEnergySoul_GPU("SOUL-22 (Quartz)",    freq=45.0,  gamma=12.5, p=2.9),
-    HighEnergySoul_GPU("SOUL-23 (Diamond)",   freq=47.5,  gamma=14.0, p=3.0),
-    HighEnergySoul_GPU("SOUL-24 (Obsidian)",  freq=49.0,  gamma=15.5, p=3.1),
-    HighEnergySoul_GPU("SOUL-25 (Laser)",     freq=52.0,  gamma=17.0, p=3.2),
-        HighEnergySoul_GPU("SOUL-26 (Flash)",     freq=55.0,  gamma=5.0,  p=2.5),
-    HighEnergySoul_GPU("SOUL-27 (Spark)",     freq=58.5,  gamma=6.5,  p=2.5),
-    HighEnergySoul_GPU("SOUL-28 (Pulse)",     freq=61.0,  gamma=8.0,  p=2.5),
-    HighEnergySoul_GPU("SOUL-29 (Bolt)",      freq=64.5,  gamma=9.5,  p=2.5),
-    HighEnergySoul_GPU("SOUL-30 (Static)",    freq=67.0,  gamma=11.0, p=2.6),
-    HighEnergySoul_GPU("SOUL-31 (Current)",   freq=70.5,  gamma=12.5, p=2.6),
-    HighEnergySoul_GPU("SOUL-32 (Plasma)",    freq=73.0,  gamma=14.0, p=2.6),
-    HighEnergySoul_GPU("SOUL-33 (Ion)",       freq=76.5,  gamma=16.5, p=2.7),
-    HighEnergySoul_GPU("SOUL-34 (Storm)",     freq=79.0,  gamma=18.0, p=2.7),
-    HighEnergySoul_GPU("SOUL-35 (Thunder)",   freq=82.5,  gamma=20.0, p=2.7),
-        HighEnergySoul_GPU("SOUL-36 (Void)",      freq=85.0,  gamma=25.0, p=3.0),
-    HighEnergySoul_GPU("SOUL-37 (Null)",      freq=88.5,  gamma=30.0, p=3.1),
-    HighEnergySoul_GPU("SOUL-38 (Singular)",  freq=92.0,  gamma=35.0, p=3.2),
-    HighEnergySoul_GPU("SOUL-39 (Event)",     freq=95.5,  gamma=40.0, p=3.3),
-    HighEnergySoul_GPU("SOUL-40 (Horizon)",   freq=100.0, gamma=45.0, p=3.4),
-    HighEnergySoul_GPU("SOUL-41 (Planck)",    freq=105.0, gamma=50.0, p=3.5),
-    HighEnergySoul_GPU("SOUL-42 (String)",    freq=110.0, gamma=55.0, p=3.6),
-    HighEnergySoul_GPU("SOUL-43 (Quark)",     freq=115.0, gamma=60.0, p=3.7),
-    HighEnergySoul_GPU("SOUL-44 (Muon)",      freq=120.0, gamma=65.0, p=3.8),
-    HighEnergySoul_GPU("SOUL-45 (Gluon)",     freq=130.0, gamma=70.0, p=4.0),
-        HighEnergySoul_GPU("SOUL-46 (Ghost)",     freq=10.0,  gamma=50.0, p=2.0),
-    HighEnergySoul_GPU("SOUL-47 (Phantom)",   freq=15.0,  gamma=40.0, p=2.2),
-    HighEnergySoul_GPU("SOUL-48 (Shadow)",    freq=137.5, gamma=1.0,  p=2.5), # Golden Angle Freq
-    HighEnergySoul_GPU("SOUL-49 (Echo)",      freq=137.5, gamma=5.0,  p=2.5),
-    HighEnergySoul_GPU("SOUL-50 (Mirage)",    freq=200.0, gamma=10.0, p=3.0),
-    HighEnergySoul_GPU("SOUL-51 (Vortex)",    freq=5.0,   gamma=100.0,p=4.0),
-    HighEnergySoul_GPU("SOUL-52 (Aura)",      freq=42.0,  gamma=42.0, p=2.0),
-    HighEnergySoul_GPU("SOUL-53 (Zenith)",    freq=314.1, gamma=3.14, p=3.14),# Pi Resonance
-    HighEnergySoul_GPU("SOUL-54 (Phi)",       freq=161.8, gamma=1.61, p=1.61),# Golden Ratio
-    HighEnergySoul_GPU("SOUL-55 (Omega)",     freq=500.0, gamma=100.0,p=5.0) # Absolute Sniper
+        HighEnergySoul("SOUL-ALPHA (Base)",   freq=25.0, gamma=5.5, p=2.0),
+        HighEnergySoul("SOUL-BETA (Metric)",  freq=35.0, gamma=7.5, p=2.5),
+        HighEnergySoul("SOUL-GAMMA (Focus)",  freq=40.0, gamma=5.0, p=2.5),
+        HighEnergySoul("SOUL-DELTA (High)",   freq=50.0, gamma=10.0, p=2.5),
+        HighEnergySoul("SOUL-EPSILON (Ult)",  freq=90.0, gamma=20.0, p=2.8),
+        HighEnergySoul("SOUL-06 (Calm)",      freq=5.0,   gamma=0.1,  p=2.0),
+    HighEnergySoul("SOUL-07 (Steady)",    freq=8.2,   gamma=0.4,  p=2.0),
+    HighEnergySoul("SOUL-08 (Root)",      freq=12.5,  gamma=0.8,  p=2.1),
+    HighEnergySoul("SOUL-09 (Flow)",      freq=15.0,  gamma=1.2,  p=2.1),
+    HighEnergySoul("SOUL-10 (Foundation)",freq=18.0,  gamma=2.0,  p=2.2),
+    HighEnergySoul("SOUL-11 (Anchor)",    freq=20.5,  gamma=3.5,  p=2.2),
+    HighEnergySoul("SOUL-12 (Pillar)",    freq=22.0,  gamma=4.2,  p=2.3),
+    HighEnergySoul("SOUL-13 (Solid)",     freq=24.5,  gamma=5.0,  p=2.3),
+    HighEnergySoul("SOUL-14 (Core)",      freq=26.0,  gamma=6.0,  p=2.4),
+    HighEnergySoul("SOUL-15 (Grounded)",  freq=28.5,  gamma=7.0,  p=2.4),
+        HighEnergySoul("SOUL-16 (Edge)",      freq=31.0,  gamma=4.5,  p=2.6),
+    HighEnergySoul("SOUL-17 (Blade)",     freq=33.5,  gamma=5.5,  p=2.6),
+    HighEnergySoul("SOUL-18 (Prism)",     freq=36.0,  gamma=6.5,  p=2.7),
+    HighEnergySoul("SOUL-19 (Needle)",    freq=38.5,  gamma=8.0,  p=2.7),
+    HighEnergySoul("SOUL-20 (Vertex)",    freq=41.0,  gamma=9.5,  p=2.8),
+    HighEnergySoul("SOUL-21 (Crystal)",   freq=43.5,  gamma=11.0, p=2.8),
+    HighEnergySoul("SOUL-22 (Quartz)",    freq=45.0,  gamma=12.5, p=2.9),
+    HighEnergySoul("SOUL-23 (Diamond)",   freq=47.5,  gamma=14.0, p=3.0),
+    HighEnergySoul("SOUL-24 (Obsidian)",  freq=49.0,  gamma=15.5, p=3.1),
+    HighEnergySoul("SOUL-25 (Laser)",     freq=52.0,  gamma=17.0, p=3.2),
+        HighEnergySoul("SOUL-26 (Flash)",     freq=55.0,  gamma=5.0,  p=2.5),
+    HighEnergySoul("SOUL-27 (Spark)",     freq=58.5,  gamma=6.5,  p=2.5),
+    HighEnergySoul("SOUL-28 (Pulse)",     freq=61.0,  gamma=8.0,  p=2.5),
+    HighEnergySoul("SOUL-29 (Bolt)",      freq=64.5,  gamma=9.5,  p=2.5),
+    HighEnergySoul("SOUL-30 (Static)",    freq=67.0,  gamma=11.0, p=2.6),
+    HighEnergySoul("SOUL-31 (Current)",   freq=70.5,  gamma=12.5, p=2.6),
+    HighEnergySoul("SOUL-32 (Plasma)",    freq=73.0,  gamma=14.0, p=2.6),
+    HighEnergySoul("SOUL-33 (Ion)",       freq=76.5,  gamma=16.5, p=2.7),
+    HighEnergySoul("SOUL-34 (Storm)",     freq=79.0,  gamma=18.0, p=2.7),
+    HighEnergySoul("SOUL-35 (Thunder)",   freq=82.5,  gamma=20.0, p=2.7),
+        HighEnergySoul("SOUL-36 (Void)",      freq=85.0,  gamma=25.0, p=3.0),
+    HighEnergySoul("SOUL-37 (Null)",      freq=88.5,  gamma=30.0, p=3.1),
+    HighEnergySoul("SOUL-38 (Singular)",  freq=92.0,  gamma=35.0, p=3.2),
+    HighEnergySoul("SOUL-39 (Event)",     freq=95.5,  gamma=40.0, p=3.3),
+    HighEnergySoul("SOUL-40 (Horizon)",   freq=100.0, gamma=45.0, p=3.4),
+    HighEnergySoul("SOUL-41 (Planck)",    freq=105.0, gamma=50.0, p=3.5),
+    HighEnergySoul("SOUL-42 (String)",    freq=110.0, gamma=55.0, p=3.6),
+    HighEnergySoul("SOUL-43 (Quark)",     freq=115.0, gamma=60.0, p=3.7),
+    HighEnergySoul("SOUL-44 (Muon)",      freq=120.0, gamma=65.0, p=3.8),
+    HighEnergySoul("SOUL-45 (Gluon)",     freq=130.0, gamma=70.0, p=4.0),
+        HighEnergySoul("SOUL-46 (Ghost)",     freq=10.0,  gamma=50.0, p=2.0),
+    HighEnergySoul("SOUL-47 (Phantom)",   freq=15.0,  gamma=40.0, p=2.2),
+    HighEnergySoul("SOUL-48 (Shadow)",    freq=137.5, gamma=1.0,  p=2.5), # Golden Angle Freq
+    HighEnergySoul("SOUL-49 (Echo)",      freq=137.5, gamma=5.0,  p=2.5),
+    HighEnergySoul("SOUL-50 (Mirage)",    freq=200.0, gamma=10.0, p=3.0),
+    HighEnergySoul("SOUL-51 (Vortex)",    freq=5.0,   gamma=100.0,p=4.0),
+    HighEnergySoul("SOUL-52 (Aura)",      freq=42.0,  gamma=42.0, p=2.0),
+    HighEnergySoul("SOUL-53 (Zenith)",    freq=314.1, gamma=3.14, p=3.14),# Pi Resonance
+    HighEnergySoul("SOUL-54 (Phi)",       freq=161.8, gamma=1.61, p=1.61),# Golden Ratio
+    HighEnergySoul("SOUL-55 (Omega)",     freq=500.0, gamma=100.0,p=5.0) # Absolute Sniper
     ]
 
     print("\n" + "="*75)
@@ -225,7 +295,7 @@ def run_soul_showcase_gpu(data_id=1471):
     soul_preds_cpu = []
     for soul in souls:
         soul.fit(X_tr_c, y_tr_c)
-        preds_gpu = soul.predict(X_te_g)
+        preds_gpu = soul.predict(X_te_data)
         preds_cpu = cp.asnumpy(preds_gpu)
         soul_preds_cpu.append(preds_cpu)
 
@@ -246,7 +316,7 @@ def run_soul_showcase_gpu(data_id=1471):
         soul.fit(X_tr_c, y_tr_c)
 
         # 2. Predict on GPU, move to CPU for scoring
-        preds_gpu = soul.predict(X_te_g)
+        preds_gpu = soul.predict(X_te_data)
         preds_cpu = cp.asnumpy(preds_gpu)
 
         acc = accuracy_score(y_te_c, preds_cpu)

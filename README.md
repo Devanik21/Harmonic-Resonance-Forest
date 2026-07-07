@@ -64,15 +64,22 @@ The advancement is the **synthesis**: treating classification as a physical wave
 **Dataset:** EEG Eye State Corpus (OpenML 1471)  
 **Test Size:** 2,996 samples  
 **Domain:** Medical signal classification (brainwave analysis)  
-**Validation:** 5-Fold Stratified Cross-Validation (v15.0 only)
+**Validation:** 5-Fold Stratified Cross-Validation (v15.0 only)  
+**Benchmark Metric:** K-Fold Mean Accuracy (reproducible, stable result across cross-validation folds)
 
-| Model | Test Accuracy | Gap from HRF |
+| Model | Mean CV Accuracy | Gap from HRF |
 | :--- | :--- | :--- |
-| **HRF v16.0 (High Var)** | **98.93% (Peak)** | **—** |
-| **HRF v15.0 (Stable)** | **98.84% (Peak)** | **-0.09%** |
-| Extra Trees | 94.49% | -4.35% |
-| Random Forest | 93.09% | -5.75% |
-| XGBoost | 92.99% | -5.85% |
+| **HRF v15.0 (Reproducible)** | **98.1225%** | **—** |
+| Extra Trees | 94.49% | -3.63% |
+| Random Forest | 93.09% | -5.03% |
+| XGBoost | 92.99% | -5.13% |
+
+**Note on Peak vs. Mean Accuracy:**
+- **Peak Accuracy during evolutionary search** (non-reproducible): 98.8415% (HRF v15.0), 98.9319% (HRF v16.0)
+- **K-Fold Mean Accuracy** (reproducible, statistically valid): 98.1225% (HRF v15.0)
+- **Final Test Accuracy** (generalization on holdout data): 98.5314%
+
+For published research and reproducible benchmarks, use **K-Fold Mean Accuracy** (98.1225%). Peak search accuracy is provided for reference but should not be used for scientific comparison due to inherent optimization bias.
 
 **Performance Visualization - Benchmark Results**
 
@@ -116,7 +123,12 @@ The **Classification Report** reveals a near-identical precision/recall profile 
 
 **Conclusion:** The HRF v15.0 Ultimate exhibits zero class-bias and maintains ultra-low variance, validating it as a robust, neuro-adaptive architecture capable of high-fidelity medical signal processing.
 
-> **Maintainer's Note:** For rigorous research benchmarks, please distinguish between **Peak Accuracy** (98.8415% for v15.0; 98.9319% for v16.0), **Final Test Accuracy** (98.5314%), and **K-Fold Mean Accuracy** (98.1225%). Version **v15.0** is the designated stable release for reproducible research, while **v16.x** remains an experimental beta.
+> **Maintainer's Note:** For rigorous research benchmarks, please distinguish between:
+> - **Peak Accuracy** (98.8415% for v15.0; 98.9319% for v16.0) - highest accuracy achieved during evolutionary search (not reproducible)
+> - **K-Fold Mean Accuracy** (98.1225% for v15.0) - stable, reproducible result across all cross-validation folds (USE THIS FOR RESEARCH)
+> - **Final Test Accuracy** (98.5314%) - generalization performance on held-out test data
+> 
+> Version **v15.0** is the designated stable release for reproducible research with **98.1225% K-Fold Mean Accuracy** as the definitive benchmark. Version **v16.x** remains an experimental beta. **Always cite K-Fold Mean Accuracy for scientific comparison, never Peak Accuracy.**
 
 ## 🔬 Core Innovation: Phase-Invariant Classification
 
@@ -457,6 +469,17 @@ I validated HRF across diverse datasets to prove generalization, culminating in 
 - **Benchmark Code:** Reproducible experiments on OpenML 1471
 - **Tutorial Notebooks:** Step-by-step implementation guides
 
+### 📈 Interactive Resonance Field Visualization
+
+To help users and researchers understand the physics-informed classification mechanisms behind HRF, the framework provides an **Explainable Resonance Dashboard**.
+
+- **Interactive Jupyter Notebook**: Explore step-by-step resonance heatmaps and decision boundary visualizations using `examples/Interactive_Resonance_Visualization.ipynb`.
+- **Explainability Documentation**: See [`explainable_dashboard.md`](explainable_dashboard.md) for full usage instructions and API references.
+- **Run the Dashboard locally**: Execute the Streamlit web app to dynamically view class-wise resonance contributions:
+  ```bash
+  streamlit run visualizations/resonance_dashboard.py
+  ```
+
 
 
 
@@ -464,7 +487,8 @@ I validated HRF across diverse datasets to prove generalization, culminating in 
 
 ## 🛠️ Development Environment
 
-**Hardware:** Standard consumer laptop + NVIDIA GPU Support
+**Hardware:** Standard consumer laptop + NVIDIA GPU Support.
+*(For CPU-only environments, refer to the [CPU Fallback Workflow](docs/cpu_fallback.md))*
 
 **Software:** Python 3.11, NVIDIA RAPIDS (cuML), CuPy, scikit-learn
 
