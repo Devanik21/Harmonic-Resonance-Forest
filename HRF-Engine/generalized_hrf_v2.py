@@ -148,7 +148,7 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         else: X_curr = X
         if GPU_AVAILABLE: return self._predict_proba_gpu(X_curr)
         else: return self._predict_proba_cpu(X_curr)
-
+ 
     def _predict_proba_gpu(self, X):
         X_tr_g = cp.asarray(self.X_train_, dtype=cp.float32)
         X_te_g = cp.asarray(X, dtype=cp.float32)
