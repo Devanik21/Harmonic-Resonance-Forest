@@ -88,12 +88,7 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         else:
             self.projector_ = None
             self.X_train_ = X
-
-
-
-
-
-
+            
     def _apply_projection(self, X: torch.Tensor) -> torch.Tensor:
         """
         Applies the holographic projection to the input tensor.
@@ -116,8 +111,6 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         Returns:
             None: This method updates the internal state of the kernels in-place.
         """
-
-
 
     # [FIX] Indentation corrected: Now this method is part of the class
     def set_raw_source(self, X):
