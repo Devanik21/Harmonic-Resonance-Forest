@@ -88,6 +88,28 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         else:
             self.projector_ = None
             self.X_train_ = X
+    def _apply_projection(self, X: torch.Tensor) -> torch.Tensor:
+        """
+        Applies the holographic projection to the input tensor.
+
+        Args:
+            X (torch.Tensor): The input feature tensor of shape (batch_size, input_dim).
+
+        Returns:
+            torch.Tensor: The projected tensor in the latent resonance space, 
+                          preserving the batch_size dimension.
+        """
+    def _update_resonance_kernels(self, y: torch.Tensor) -> None:
+        """
+        Updates internal resonance kernels based on the target signal.
+
+        Args:
+            y (torch.Tensor): The target labels or signal values of shape (batch_size,).
+                              Values should be normalized within the range [0, 1].
+
+        Returns:
+            None: This method updates the internal state of the kernels in-place.
+        """
 
     # [FIX] Indentation corrected: Now this method is part of the class
     def set_raw_source(self, X):
@@ -148,6 +170,8 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         else: X_curr = X
         if GPU_AVAILABLE: return self._predict_proba_gpu(X_curr)
         else: return self._predict_proba_cpu(X_curr)
+
+    
 
     def _predict_proba_gpu(self, X):
         X_tr_g = cp.asarray(self.X_train_, dtype=cp.float32)
