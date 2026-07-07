@@ -1,0 +1,21 @@
+Dataset,HRF Accuracy (%),SVM Accuracy (%),Difference (%),Winner
+EEG Eye State,92.66,85.33,7.33,HRF
+Phoneme,92.0,81.66,10.34,HRF
+Wall-Following Robot,99.66,88.5,11.16,HRF
+Electricity,85.33,78.0,7.33,HRF
+Gas Sensor Drift,98.83,93.66,5.17,HRF
+Japanese Vowels,98.0,97.83,0.17,HRF
+Gesture Phase,70.33,55.0,15.33,HRF
+Mfeat-Fourier,89.5,87.75,1.75,HRF
+Optdigits,98.16,99.0,-0.84,SVM
+Solar Flare Evolution,77.77,77.77,0.0,Tie
+Texture Analysis,100.0,90.46,9.54,HRF
+Steel Plates Faults,100.0,99.48,0.52,HRF
+HTRU2 Pulsar Detection,76.68,77.72,-1.04,SVM
+Madelon,85.0,59.8,25.2,HRF
+Bioresponse,83.0,76.5,6.5,HRF
+Higgs Boson,70.16,66.5,3.66,HRF
+Magic Telescope,88.5,86.33,2.17,HRF
+Musk v2,100.0,99.66,0.34,HRF
+Satimage,94.16,88.16,6.0,HRF
+Letter Recognition,92.5,86.33,6.17,HRF

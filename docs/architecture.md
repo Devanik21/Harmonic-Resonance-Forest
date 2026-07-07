@@ -1,6 +1,6 @@
 # HRF Architecture: The Titan-26 Unified Manifold
 
-This document provides a technical overview of the **Harmonic Resonance Fields (HRF)** system architecture, focusing on the **Titan-26** unified manifold.
+This document provides a technical overview of the **Harmonic Resonance Fields (HRF)** system architecture, focusing on the **Titan-26** unified manifold(Current implementatiion includes 16 operational units).
 
 ## 1. Architectural Philosophy
 
@@ -147,7 +147,6 @@ High-precision correction and specialized filters.
 
 
 ## 5. Repository Structure
-
 For new contributors, here is how the project is organized:
 
 ```text
