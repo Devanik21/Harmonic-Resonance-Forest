@@ -88,7 +88,7 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         else:
             self.projector_ = None
             self.X_train_ = X
-            
+
     def _apply_projection(self, X: torch.Tensor) -> torch.Tensor:
         """
         Applies the holographic projection to the input tensor.
@@ -100,7 +100,7 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
             torch.Tensor: The projected tensor in the latent resonance space, 
                           preserving the batch_size dimension.
         """
-    def _update_resonance_kernels(self, y: torch.Tensor) -> None:
+def _update_resonance_kernels(self, y: torch.Tensor) -> None:
         """
         Updates internal resonance kernels based on the target signal.
 
@@ -111,6 +111,17 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         Returns:
             None: This method updates the internal state of the kernels in-place.
         """
+        # Define epsilon for numerical stability
+        epsilon = 1e-9
+        
+        # Calculate energy (replace 'signal_energy' with your actual variable name)
+        signal_energy = torch.sum(y**2, dim=-1, keepdim=True)
+        
+        # Apply normalization with epsilon stabilization
+        # This prevents DivisionByZero and NaN propagation
+        normalized_kernel = self.kernels / (signal_energy + epsilon)
+        
+        # ... rest of your update logic
 
     # [FIX] Indentation corrected: Now this method is part of the class
     def set_raw_source(self, X):
