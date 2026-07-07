@@ -9,4 +9,4 @@ Projects raw input into the resonance space.
 
 ### `_update_resonance_kernels(y)`
 Updates internal kernels based on target signals.
-- **y**: `torch.Tensor` of target labels or signal values.
+- **y**: `torch.Tensor` of target labels or signal values...
