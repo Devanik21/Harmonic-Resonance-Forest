@@ -165,27 +165,6 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         self.projector_ = None
         self.X_raw_source_ = None
 
- test
-    def fit(self, X, y):
-        """
-        Fit the resonance unit to training data.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Feature matrix.
-        y : array-like of shape (n_samples,)
-            Class labels.
-
-        Returns
-        -------
-        self : object
-            Fitted estimator.
-        """
-        self.classes_ = np.unique(y)
-        self._apply_projection(X)
-        self.y_train_ = y
-=======
 
 
     def partial_fit(self, X, y):
@@ -208,7 +187,6 @@ feature/memory-efficient-batching
         import cupy as cp
         cp.get_default_memory_pool().free_all_blocks()
     
- gssoc-2026
         return self
 
  testing
@@ -469,57 +447,6 @@ fix/issue-229-memory-leak
         probas    = []
         batch_size = 256
 
- test
-        return cp.asnumpy(cp.concatenate(probas))
-    def _predict_proba_cpu(self, X):
-        """NumPy fallback for predict_proba when CuPy/GPU is unavailable.
-        Mirrors _predict_proba_gpu exactly, using np instead of cp.
-        """
-        X_train = self.X_train_.astype(np.float32)
-        X_test  = np.asarray(X, dtype=np.float32)
-        y_train = self.y_train_
-
-        n_test    = len(X_test)
-        n_classes = len(self.classes_)
-        probas    = []
-        batch_size = 256
-
-        p_norm = self.dna_.get('p', 2.0)
-        gamma  = self.dna_['gamma']
-        freq   = self.dna_['freq']
-        power  = self.dna_['power']
-        phase  = self.dna_.get('phase', 0.0)
-
-        for i in range(0, n_test, batch_size):
-            end      = min(i + batch_size, n_test)
-            batch_te = X_test[i:end]
-
-            dists = np.empty((len(batch_te), len(X_train)), dtype=np.float32)
-            for j, row in enumerate(batch_te):
-                dists[j] = np.sum(np.abs(X_train - row) ** p_norm, axis=1) ** (1.0 / p_norm)
-
-            top_k_idx = np.argsort(dists, axis=1)[:, :self.k]
-            row_idx   = np.arange(len(batch_te))[:, None]
-            top_dists = dists[row_idx, top_k_idx]
-            top_y     = y_train[top_k_idx]
-
-            cosine_term = 1.0 + np.cos(freq * top_dists + phase)
-            cosine_term = np.maximum(cosine_term, 0.0)
-            w = np.exp(-gamma * (top_dists ** 2)) * cosine_term
-            w = np.power(w, power)
-
-            batch_probs = np.zeros((len(batch_te), n_classes))
-            for c_idx, cls in enumerate(self.classes_):
-                class_mask = (top_y == cls)
-                batch_probs[:, c_idx] = np.sum(w * class_mask, axis=1)
-
-            total_energy = np.sum(batch_probs, axis=1, keepdims=True)
-            total_energy[total_energy == 0] = 1.0  # avoid division by zero
-            batch_probs /= total_energy
-
-            probas.append(batch_probs)
-
-=======
         p_norm = self.dna_.get('p', 2.0)
         gamma  = self.dna_['gamma']
         freq   = self.dna_['freq']          # f_base — paper §3.1.1
@@ -572,7 +499,6 @@ fix/issue-229-memory-leak
             probas.append(batch_probs)
  gssoc-2026
 
- gssoc-2026
         return np.concatenate(probas)
  
     def predict(self, X):
