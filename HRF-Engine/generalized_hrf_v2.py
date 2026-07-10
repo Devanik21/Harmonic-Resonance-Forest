@@ -532,8 +532,10 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
                 # Fallback for sensitive kernels
                 if self.verbose: print(f"   [Warning] Unit {i+1} adaptation issue: {e}")
                 # Re-initialize properly if failed
-                unit = SVC(kernel='rbf', C=1.0, probability=True)
-                unit.fit(X_evo_t, y_evo_t)
+                fallback_model = SVC(kernel='rbf', C=1.0, probability=True)
+                fallback_model.fit(X_evo_t, y_evo_t)
+                other_units[i] = fallback_model
+                setattr(self, f"unit_{i+1:02d}", fallback_model)
 
 
         # --- STEP C: OPTIMIZATION (Finding the Perfect Consensus) ---
