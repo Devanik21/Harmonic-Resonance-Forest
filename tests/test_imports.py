@@ -18,6 +18,7 @@ def test_requirements_installed():
         'matplotlib',
         'seaborn',
         'xgboost',
+        'openml',
     ]
 
     for package in required_packages:
@@ -29,11 +30,14 @@ def test_requirements_installed():
 @pytest.mark.unit
 def test_hrf_code_files_exist():
     """Verify HRF code files exist in expected locations."""
+    # Resolve project root relative to test file location
+    project_root = Path(__file__).parent.parent
+
     expected_files = [
-        Path("1/harmonic_resonance_fields_hrf (1).py"),
-        Path("HRF Codes/hrf_conference.py"),
-        Path("HRF Codes/hrf_final_v16_hrf.py"),
-        Path("HRF Codes/hrf_eeg.py"),
+        project_root / "1/harmonic_resonance_fields_hrf (1).py",
+        project_root / "HRF Codes/hrf_conference.py",
+        project_root / "HRF Codes/hrf_final_v16_hrf.py",
+        project_root / "HRF Codes/hrf_eeg.py",
     ]
 
     for file_path in expected_files:
@@ -42,5 +46,6 @@ def test_hrf_code_files_exist():
 @pytest.mark.unit
 def test_notebooks_exist():
     """Verify Jupyter notebooks exist in expected locations."""
-    notebook_count = len(list(Path(".").rglob("*.ipynb")))
+    project_root = Path(__file__).parent.parent
+    notebook_count = len(list(project_root.rglob("*.ipynb")))
     assert notebook_count > 0, "No Jupyter notebooks found in project"
