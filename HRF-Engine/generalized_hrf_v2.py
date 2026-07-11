@@ -17,7 +17,6 @@ import logging
 import numpy as np
 import pandas as pd
 import warnings
-fix/issue-229-memory-leak
 import cupy as cp
 import time
 import torch
@@ -25,12 +24,9 @@ import cupy as cp
 import numpy.typing as npt
 from cupyx.scipy.spatial.distance import cdist
 from typing import Dict, List, Optional, Union, Any
-from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin gssoc-2026
+from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 import numpy.typing as npt
 from typing import Dict, List, Optional, Union, Any
-from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.ensemble import ExtraTreesClassifier
 from xgboost import XGBClassifier
 from sklearn.preprocessing import RobustScaler, PowerTransformer, StandardScaler
@@ -172,27 +168,8 @@ class HolographicSoulUnit(BaseEstimator, ClassifierMixin):
         if self.projector_ is None and self.dna_['dim_reduction'] != 'none':
             self._apply_projection(X)
 
- testing2
-        # 2. Online Update
- 
-feature/memory-efficient-batching
-    # 2. Online Update: Update internal kernels instead of storing data
-    # THIS is where you run your mathematical logic (e.g., resonance update)
-        self._update_resonance_kernels(X, y)
-    
-    # 3. CRITICAL: Clear memory
-    # This destroys the reference to the batch so the GPU can reclaim space
-        del X
-        del y
-        import cupy as cp
-        cp.get_default_memory_pool().free_all_blocks()
-    
-        return self
-
- testing
-    # 2. Online Update: Update internal kernels instead of storing data
-    # THIS is where you run your mathematical logic (e.g., resonance update)
-  gssoc-2026
+        # 2. Online Update: Update internal kernels instead of storing data
+        # THIS is where you run your mathematical logic (e.g., resonance update)
         self._update_resonance_kernels(X, y)
         
         # 3. Aggressive Memory Cleanup
@@ -205,25 +182,15 @@ feature/memory-efficient-batching
         cp.get_default_memory_pool().free_all_blocks()
         
         return self
- testing2
 
-    def train_large_dataset(model, X_full, y_full, batch_size=1024):
-    for i in range(0, len(X_full), batch_size):
-        X_batch = X_full[i:i + batch_size]
-        y_batch = y_full[i:i + batch_size]
-        model.partial_fit(X_batch, y_batch)
-    print("Training complete!")
-    
-=======
-=======
- fix/issue-229-memory-leak
- gssoc-2026
-gssoc-2026
- gssoc-2026
+    def train_large_dataset(self, X_full, y_full, batch_size=1024):
+        for i in range(0, len(X_full), batch_size):
+            X_batch = X_full[i:i + batch_size]
+            y_batch = y_full[i:i + batch_size]
+            self.partial_fit(X_batch, y_batch)
+        print("Training complete!")
+
     def _apply_projection(self, X: npt.NDArray[np.float64]) -> None:
-
-    def _apply_projection(self, X):
- gssoc-2026
         if self.dna_['dim_reduction'] == 'holo':
             n_components = max(2, int(np.sqrt(X.shape[1])))
             self.projector_ = GaussianRandomProjection(n_components=n_components, random_state=42)
@@ -317,8 +284,6 @@ gssoc-2026
         else: return self._predict_proba_cpu(X_curr)
 
     def _predict_proba_gpu(self, X: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
-        X_tr_g = cp.asarray(self.X_train_, dtype=cp.float32)
-    def _predict_proba_gpu(self, X):
         """
         CuPy (GPU) implementation of the HRF wave-potential kernel.
 
@@ -332,22 +297,8 @@ gssoc-2026
         """
         X_tr_g = cp.asarray(self.X_train_, dtype=cp.float32)
         y_tr_g = cp.asarray(self.y_train_)
-fix/issue-229-memory-leak
-        probas = []
-        
-        # 1. Ensure these are defined before the loop
-        p_norm = self.dna_.get('p', 2.0)
-        
-        for i in range(0, len(X), batch_size):
-            end = min(i + batch_size, len(X))
-            batch_te = cp.asarray(X[i:end], dtype=cp.float32)
-            
-            # --- OPTIMIZED BATCH LOGIC ---
-            # Replaces the massive broadcasting 'diff' with memory-efficient cdist
-            dists = cdist(batch_te, X_tr_g, metric='minkowski', p=p_norm)
-        
 
-        n_test    = len(X_te_g)
+        n_test    = len(X)
         n_classes = len(self.classes_)
         probas    = []
         batch_size = 256
@@ -359,11 +310,12 @@ fix/issue-229-memory-leak
         phase  = self.dna_.get('phase', 0.0)
 
         for i in range(0, n_test, batch_size):
-            end       = min(i + batch_size, n_test)
-            batch_te  = X_te_g[i:end]
-
-            diff      = cp.abs(batch_te[:, None, :] - X_tr_g[None, :, :])
-            dists     = cp.power(cp.sum(cp.power(diff, p_norm), axis=2), 1.0 / p_norm)
+            end = min(i + batch_size, n_test)
+            batch_te = cp.asarray(X[i:end], dtype=cp.float32)
+            
+            # --- OPTIMIZED BATCH LOGIC ---
+            # Replaces the massive broadcasting 'diff' with memory-efficient cdist
+            dists = cdist(batch_te, X_tr_g, metric='minkowski', p=p_norm)
 
             top_k_idx = cp.argsort(dists, axis=1)[:, :self.k]
             row_idx   = cp.arange(len(batch_te))[:, None]
@@ -389,32 +341,15 @@ fix/issue-229-memory-leak
             total_energy = cp.sum(batch_probs, axis=1, keepdims=True)
             total_energy[total_energy == 0] = 1.0
             batch_probs /= total_energy
- fix/issue-229-memory-leak
-            # -----------------------------
 
             probas.append(cp.asnumpy(batch_probs))
             
             # Cleanup
-            del batch_te, dists, top_k_idx, top_dists, top_y, w, cosine_term, batch_probs, total_energy
-
-            probas.append(cp.asnumpy(batch_probs))
-            del batch_te, dists, diff, top_k_idx, top_dists, w, cosine_term
-            probas.append(batch_probs)
-
-            del batch_te, dists, diff, top_k_idx, top_dists, gauss
+            del batch_te, dists, top_k_idx, top_dists, top_y, batch_probs, total_energy
             cp.get_default_memory_pool().free_all_blocks()
                 
         return np.concatenate(probas)
 
- fix/issue-229-memory-leak
-    def _predict_proba_cpu(self, X):
-        # Your existing CPU fallback logic here...
-        pass
-        """NumPy fallback for predict_proba when CuPy/GPU is unavailable.
-        Mirrors _predict_proba_gpu exactly, using np instead of cp.
-=======
-        import numpy as np
-        return np.concatenate(probas)
     def _predict_proba_cpu(self, X):
         """
         NumPy (CPU) implementation of the HRF wave-potential kernel.
@@ -492,12 +427,8 @@ fix/issue-229-memory-leak
             total_energy = np.sum(batch_probs, axis=1, keepdims=True)
             total_energy[total_energy == 0] = 1.0
             batch_probs /= total_energy
-fix/issue-229-memory-leak
 
-            probas.append(cp.asnumpy(batch_probs))
-=======
             probas.append(batch_probs)
- gssoc-2026
 
         return np.concatenate(probas)
  
@@ -563,17 +494,27 @@ class EntropyMaxwellUnit(BaseEstimator, ClassifierMixin):
         return self
 
     def predict_proba(self, X):
-        probs = np.zeros((len(X), len(self.classes_)))
+        from scipy.special import logsumexp
+        
+        log_probs = np.full((len(X), len(self.classes_)), -np.inf)
         for i, cls in enumerate(self.classes_):
-            if cls in self.models_:
-                log_prob = self.models_[cls].score_samples(X)
-                # Clip log_prob to prevent underflow/overflow
-                log_prob = np.clip(log_prob, -100, 100)
-                probs[:, i] = np.exp(log_prob) * self.priors_[cls]
+            if cls in self.models_ and self.priors_[cls] > 0:
+                # Calculate log(P(X|C)) + log(P(C))
+                log_p_xc = self.models_[cls].score_samples(X)
+                log_probs[:, i] = log_p_xc + np.log(self.priors_[cls])
 
-        # STABILITY FIX: Add epsilon to avoid ZeroDivisionError (0/0 = NaN)
-        total = np.sum(probs, axis=1, keepdims=True) + 1e-10
-        return probs / total
+        # Safely compute the log of the sum of exponents: log(sum(exp(log_probs)))
+        log_total = logsumexp(log_probs, axis=1, keepdims=True)
+        
+        # Normalize in log space to prevent underflow/overflow
+        # exp(log_probs - log_total) = exp(log_probs) / exp(log_total)
+        log_probs_norm = log_probs - log_total
+        probs = np.exp(log_probs_norm)
+        
+        # In the mathematically impossible case where log_total is -inf (e.g. all NaNs), fallback
+        probs = np.nan_to_num(probs, nan=1.0 / len(self.classes_))
+        
+        return probs
 
     def score(self, X, y):
         return accuracy_score(y, self.classes_[np.argmax(self.predict_proba(X), axis=1)])
@@ -1032,130 +973,6 @@ class HolographicDifferentialTransformer(BaseEstimator, TransformerMixin):
             f"HolographicDifferentialTransformer("
             f"clip_range={self.clip_range!r})"
         )
-    """
-    Physics-inspired classifier using Newtonian gravitational potential
-    (softened inverse-square law) as the decision mechanism.
-
-    Each training point acts as a gravitational mass. A test point is
-    attracted to training points proportionally to 1 / (r² + ε), where r
-    is the Euclidean distance and ε (softening length) prevents singularities.
-    Class probabilities are derived from the total gravitational potential
-    exerted by each class's training points on the test point.
-
-    Biological relevance: neural firing patterns cluster in feature space.
-    Close same-class points exert strong attraction; distant or cross-class
-    points contribute weakly, producing soft, naturally-curved boundaries
-    that adapt to overlapping class distributions — a known challenge in
-    EEG classification.
-
-    Architecture reference: Titan-26 Sector D, Unit 21.
-    """
-
-    def __init__(self, softening=1e-2, batch_size=512, random_state=None):
-        """
-        Parameters
-        ----------
-        softening : float, default=1e-2
-            Softening length ε in 1/(r²+ε²). Prevents potential singularity
-            when a test point coincides exactly with a training point.
-            Analogous to Plummer softening in N-body simulations.
-        batch_size : int, default=512
-            Test samples processed per batch. Keeps (batch × n_train)
-            arrays memory-safe without sacrificing vectorisation.
-        """
-        self.softening = softening
-        self.batch_size = batch_size
-        self.random_state = random_state
-
-    def fit(self, X, y):
-        from sklearn.utils.validation import check_X_y
-        X, y = check_X_y(X, y)
-        self.classes_ = np.unique(y)
-        self.n_features_in_ = X.shape[1]
-        # Store per-class training matrices — avoids repeated boolean masking
-        # at inference time and makes predict_proba fully vectorised per class.
-        self.X_by_class_ = {
-            cls: X[y == cls].astype(np.float32)
-            for cls in self.classes_
-        }
-        return self
-
-    def _batch_potential(self, X_batch, X_class):
-        """
-        Compute total softened gravitational potential for one batch vs one class.
-
-        Shape: X_batch (B, d), X_class (N_c, d) → output (B,)
-
-        Uses row-wise loop over X_class chunks to keep memory at
-        O(B × chunk) rather than O(B × N_c × d) for large N_c.
-        """
-        B = len(X_batch)
-        potential = np.zeros(B, dtype=np.float64)
-        eps_sq = self.softening ** 2
-
-        chunk = 256
-        for start in range(0, len(X_class), chunk):
-            X_c = X_class[start : start + chunk]                  # (chunk, d)
-            diff = X_batch[:, None, :] - X_c[None, :, :]         # (B, chunk, d)
-            sq_dist = np.sum(diff ** 2, axis=2)                   # (B, chunk)
-            potential += (1.0 / (sq_dist + eps_sq)).sum(axis=1)   # (B,)
-
-        return potential
-
-    def predict_proba(self, X):
-        check_is_fitted(self, 'X_by_class_')
-        X = check_array(X).astype(np.float32)
-        n_samples = len(X)
-        n_classes = len(self.classes_)
-        proba = np.zeros((n_samples, n_classes), dtype=np.float64)
-
-        for i in range(0, n_samples, self.batch_size):
-            batch = X[i : i + self.batch_size]
-            for c_idx, cls in enumerate(self.classes_):
-                proba[i : i + len(batch), c_idx] = self._batch_potential(
-                    batch, self.X_by_class_[cls]
-                )
-
-        # Normalise rows to valid probability simplex
-        row_sums = proba.sum(axis=1, keepdims=True)
-        row_sums = np.where(row_sums == 0, 1.0, row_sums)
-        return proba / row_sums
-
-    def predict(self, X):
-        check_is_fitted(self, 'X_by_class_')
-        return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
-
-    def score(self, X, y):
-        return np.mean(self.predict(X) == y)
-
-
-# --- 7. THE TITAN-16 "BEAST MODE" (Extended with Sector D Physics Units) ---
-class HarmonicResonanceClassifier_BEAST_16D(BaseEstimator, ClassifierMixin):
-    """Placeholder for future 16-unit extension. See BEAST_14D for the active implementation."""
-    pass
-
-# --- 7. THE TITAN-14 "BEAST MODE" (Endgame Edition) ---
-class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
-    def __init__(self, verbose=False, use_holographic_diff=False):
-        """
-        Harmonic Resonance Classifier — BEAST Mode (14-Unit Endgame Edition).
-
-        Parameters
-        ----------
-        verbose : bool, default=False
-            Print phase-by-phase training diagnostics.
-        use_holographic_diff : bool, default=False
-            When True, applies ``HolographicDifferentialTransformer`` (HRF
-            paper §3.2) **before** ``RobustScaler`` inside ``fit()`` and
-            ``predict_proba()``.  This bipolar montage step computes
-            pairwise channel differences and appends global coherence,
-            cancelling common-mode artefacts while preserving differential
-            brain activity.  Set to True to reproduce the 98.84 % result
-            reported on OpenML 1471 (EEG Eye State corpus).
-
-            Default is ``False`` for backward compatibility with existing
-            fitted models and non-EEG datasets.
-        """
 
 # --- WAVE RESONANCE KERNEL ---
 def wave_resonance_kernel(X, Y):
@@ -1198,9 +1015,6 @@ def morlet_wavelet_kernel(X, Y):
 
 # --- 7. THE TITAN-18 "BEAST MODE" (Endgame Edition) ---
 class HarmonicResonanceClassifier_BEAST_18D(BaseEstimator, ClassifierMixin):
-    def __init__(self, verbose=False):
-# --- 7. THE TITAN-14 "BEAST MODE" (Endgame Edition) ---
-class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
     def __init__(self, verbose=False, use_holographic_diff=False):
         self.verbose = verbose
         self.use_holographic_diff = use_holographic_diff
@@ -1294,41 +1108,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
             p=1.0, phase=0.7854, dim_reduction='pca'
         )
 
-        # --- SECTOR D: MACRO-PHYSICAL LAYERS (Titan-26 Extension) ---
-
-        # 15. GOLDEN PHI (Biological Spiral Mapping — Unit 18 in Titan-26)
-        # φ-weighted feature space captures self-similar EEG/ECG signal structure.
-        self.unit_15 = GoldenPhiUnit(n_neighbors=7, random_state=42)
-
-        # 16. GRAVITY POTENTIAL (Inverse-Square Law Attraction — Unit 21 in Titan-26)
-        # Newtonian softened potential produces curved, physics-informed boundaries.
-        self.unit_16 = GravityPotentialUnit(softening=1e-2, batch_size=512, random_state=42)
-
-        # 12. THE HOLOGRAPHIC SOUL — Logic Seed
-        # Low frequency, tight boundary: favours crisp decision regions.
-        self.unit_12 = HolographicSoulUnit(
-            k=15, random_state=12,
-            freq=1.0, gamma=0.1, power=2.0,
-            p=2.0, phase=0.0, dim_reduction='none'
-        )
-
-        # 13. TWIN SOUL ALPHA — Chaos Seed
-        # Full 2π cycle, loose gamma, holographic projection: wave/frequency explorer.
-        self.unit_13 = HolographicSoulUnit(
-            k=15, random_state=13,
-            freq=6.2832, gamma=2.0, power=3.0,
-            p=2.0, phase=1.5708, dim_reduction='holo'
-        )
-
-        # 14. TWIN SOUL BETA — Order Seed
-        # π frequency, Manhattan norm, PCA projection: manifold/geometry explorer.
-        self.unit_14 = HolographicSoulUnit(
-            k=15, random_state=14,
-            freq=3.14159, gamma=0.5, power=1.0,
-            p=1.0, phase=0.7854, dim_reduction='pca'
-        )
-
-        # --- SECTOR D: MACRO-PHYSICAL LAYERS (Titan-26 Extension) ---
+        pass
 
     def fit(self, X, y):
         """
@@ -1424,11 +1204,6 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
 
         other_unit_names = [
             "unit_01", "unit_02", "unit_03", "unit_04", "unit_05", "unit_06", "unit_07", "unit_15", "unit_16", "unit_17", "unit_18", "unit_08", "unit_09", "unit_10", "unit_11"
-        other_units = [
-            self.unit_01, self.unit_02, self.unit_03, self.unit_04,
-            self.unit_05, self.unit_06, self.unit_07, self.unit_08,
-            self.unit_09, self.unit_10, self.unit_11,
-            self.unit_15, self.unit_16,   # Sector D physics units
         ]
         other_units = [getattr(self, name) for name in other_unit_names]
 
@@ -1558,11 +1333,10 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
         X_scaled = self.scaler_.transform(X)
 
         all_units = [
-            self.unit_01, self.unit_02, self.unit_03, self.unit_04, self.unit_05, self.unit_06, self.unit_07, self.unit_15, self.unit_16, self.unit_17, self.unit_18, self.unit_08, self.unit_09, self.unit_10, self.unit_11, self.unit_12, self.unit_13, self.unit_14
             self.unit_01, self.unit_02, self.unit_03, self.unit_04,
             self.unit_05, self.unit_06, self.unit_07, self.unit_08,
             self.unit_09, self.unit_10, self.unit_11,
-            self.unit_15, self.unit_16,    # Sector D physics units — must match fit() order
+            self.unit_15, self.unit_16, self.unit_17, self.unit_18,
             self.unit_12, self.unit_13, self.unit_14
         ]
 
@@ -1575,7 +1349,7 @@ class HarmonicResonanceClassifier_BEAST_14D(BaseEstimator, ClassifierMixin):
                     d = unit.decision_function(X_scaled)
                     p = _stable_softmax(d)  # log-sum-exp: numerically stable
             except:
-                 p = np.ones((len(X), len(self.classes_))) / len(self.classes_)
+                p = np.ones((len(X), len(self.classes_))) / len(self.classes_)
 
             if final_pred is None:
                 final_pred = self.weights_[i] * p
