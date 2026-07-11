@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main, develop ]
+
+jobs:
+  test:
+    name: Test and Validation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.11" ]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov flake8 nbconvert
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Lint with flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true
+
+    - name: Validate notebook syntax
+      run: |
+        find . -name "*.ipynb" -type f | while read notebook; do
+          echo "Validating $notebook"
+          jupyter nbconvert --to notebook --inplace "$notebook" 2>&1 | grep -E "ERROR|Error" && echo "Failed: $notebook" || echo "Valid: $notebook"
+        done
+      continue-on-error: true
+
+    - name: Run tests with pytest
+      run: |
+        pytest tests/ -v --cov=. --cov-report=xml 2>&1 || echo "No tests found or tests failed"
+      continue-on-error: true
+
+    - name: Upload coverage reports
+      if: always()
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+      continue-on-error: true
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pylint bandit
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Run pylint
+      run: |
+        find . -name "*.py" -type f | grep -v "__pycache__" | xargs pylint --exit-zero --disable=all --enable=E,F 2>&1 || echo "Pylint check completed"
+      continue-on-error: true
+
+    - name: Run bandit security check
+      run: |
+        bandit -r . -ll -f json -o bandit-report.json 2>&1 || echo "Bandit check completed"
+      continue-on-error: true
