@@ -991,7 +991,7 @@ def wave_resonance_kernel(X, Y):
         return resonance * decay
 
     chunks = list(pairwise_distances_chunked(X, Y, reduce_func=reduce_func, metric='euclidean', n_jobs=1))
-    return np.vstack(chunks) if chunks else np.array([[]])
+    return np.vstack(chunks) if chunks else np.empty((X.shape[0], Y.shape[0]))
 
 # --- FOURIER RESONANCE KERNEL ---
 def fourier_resonance_kernel(X, Y):
@@ -1004,7 +1004,7 @@ def fourier_resonance_kernel(X, Y):
         return np.cos(2.0 * np.pi * dist_chunk) * np.exp(-0.3 * dist_chunk)
 
     chunks = list(pairwise_distances_chunked(X, Y, reduce_func=reduce_func, metric='euclidean', n_jobs=1))
-    return np.vstack(chunks) if chunks else np.array([[]])
+    return np.vstack(chunks) if chunks else np.empty((X.shape[0], Y.shape[0]))
 
 # --- MORLET WAVELET KERNEL ---
 def morlet_wavelet_kernel(X, Y):
