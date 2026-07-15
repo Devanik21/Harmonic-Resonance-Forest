@@ -980,38 +980,45 @@ def wave_resonance_kernel(X, Y):
     Wavelet Resonance Kernel
     Combines cosine resonance + wave decay
     """
+    from sklearn.metrics import pairwise_distances_chunked
 
-    X = np.asarray(X)
-    Y = np.asarray(Y)
+    X = np.asarray(X, dtype=np.float32)
+    Y = np.asarray(Y, dtype=np.float32)
 
-    from sklearn.metrics.pairwise import euclidean_distances
-    dist = euclidean_distances(X, Y)
+    def reduce_func(dist_chunk, start):
+        resonance = np.cos(2.5 * dist_chunk)
+        decay = np.exp(-0.5 * (dist_chunk ** 2))
+        return resonance * decay
 
-    resonance = np.cos(2.5 * dist)
-    decay = np.exp(-0.5 * (dist ** 2))
-
-    return resonance * decay
+    chunks = list(pairwise_distances_chunked(X, Y, reduce_func=reduce_func, metric='euclidean', n_jobs=1))
+    return np.vstack(chunks) if chunks else np.empty((X.shape[0], Y.shape[0]))
 
 # --- FOURIER RESONANCE KERNEL ---
 def fourier_resonance_kernel(X, Y):
-    X = np.asarray(X)
-    Y = np.asarray(Y)
+    from sklearn.metrics import pairwise_distances_chunked
 
-    from sklearn.metrics.pairwise import euclidean_distances
-    dist = euclidean_distances(X, Y)
+    X = np.asarray(X, dtype=np.float32)
+    Y = np.asarray(Y, dtype=np.float32)
 
-    return np.cos(2.0 * np.pi * dist) * np.exp(-0.3 * dist)
+    def reduce_func(dist_chunk, start):
+        return np.cos(2.0 * np.pi * dist_chunk) * np.exp(-0.3 * dist_chunk)
+
+    chunks = list(pairwise_distances_chunked(X, Y, reduce_func=reduce_func, metric='euclidean', n_jobs=1))
+    return np.vstack(chunks) if chunks else np.empty((X.shape[0], Y.shape[0]))
 
 # --- MORLET WAVELET KERNEL ---
 def morlet_wavelet_kernel(X, Y):
-    X = np.asarray(X)
-    Y = np.asarray(Y)
- 
-    from sklearn.metrics.pairwise import euclidean_distances
-    dist = euclidean_distances(X, Y)
+    from sklearn.metrics import pairwise_distances_chunked
 
-    omega = 5.0
-    return np.cos(omega * dist) * np.exp(-(dist ** 2) / 2)
+    X = np.asarray(X, dtype=np.float32)
+    Y = np.asarray(Y, dtype=np.float32)
+ 
+    def reduce_func(dist_chunk, start):
+        omega = 5.0
+        return np.cos(omega * dist_chunk) * np.exp(-(dist_chunk ** 2) / 2)
+
+    chunks = list(pairwise_distances_chunked(X, Y, reduce_func=reduce_func, metric='euclidean', n_jobs=1))
+    return np.vstack(chunks) if chunks else np.array([[]])
 
 # --- 7. THE TITAN-18 "BEAST MODE" (Endgame Edition) ---
 class HarmonicResonanceClassifier_BEAST_18D(BaseEstimator, ClassifierMixin):
