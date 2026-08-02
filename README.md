@@ -463,6 +463,43 @@ To help users and researchers understand the physics-informed classification mec
 
 
 
+## 📁 Repository Structure
+
+The repository is organized into dedicated directories for research, implementation, documentation, and reproducible experiments.
+
+```text
+.
+├── .github/                 # GitHub workflows and issue/PR templates
+├── 1/                       # Research notebooks, benchmark summaries, and experimental resources
+├── docs/                    # Architecture, pipeline, and technical documentation
+│   └── images/              # Figures and visual assets used in the documentation
+├── HRF Codes/               # Core Harmonic Resonance Fields implementations
+├── HRF-Engine/              # Optimized HRF engine and execution modules
+│   ├── HRF 21D/             # 21-dimensional HRF implementation
+│   └── HRF 26D/             # 26-dimensional HRF implementation
+├── Research Paper/          # Research paper, white paper, and supplementary materials
+├── README.md                # Project overview and documentation
+├── CONTRIBUTING.md          # Contribution guidelines
+├── SECURITY.md              # Security policy
+├── AGENTS.md                # Agent-related documentation
+├── LICENSE                  # Apache 2.0 license
+├── requirements.txt         # Python dependencies
+├── hrf_paper_markdown.md    # Markdown version of the research paper
+└── White Paper.md           # White paper
+```
+
+### Directory Overview
+
+| Directory/File | Purpose |
+|----------------|---------|
+| `.github/` | Contains GitHub Actions workflows and issue/PR templates. |
+| `1/` | Contains research notebooks, benchmark summaries, experimental code, and result assets. |
+| `docs/` | Stores architecture, pipeline, and additional project documentation. |
+| `HRF Codes/` | Contains the primary implementations of the Harmonic Resonance Fields algorithm. |
+| `HRF-Engine/` | Provides optimized engine implementations, including 21D and 26D variants. |
+| `Research Paper/` | Contains the published research paper, white paper, and supplementary resources. |
+| `requirements.txt` | Lists the Python packages required to run the project. |
+| `AGENTS.md` | Documents project agents and repository workflows. |
 
 ---
 
