@@ -1,0 +1,391 @@
+name: Master Contribution Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_type:
+        description: Select whether to process an issue or a pull request
+        required: true
+        type: choice
+        options:
+          - issue
+          - pull_request
+      number:
+        description: Issue or pull request number
+        required: true
+        type: string
+      mode:
+        description: Choose whether to audit or enforce
+        required: false
+        type: choice
+        default: enforce
+        options:
+          - audit
+          - enforce
+  issues:
+    types: [opened, reopened, edited]
+  pull_request_target:
+    types: [opened, reopened, edited, ready_for_review, synchronize]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+concurrency:
+  group: master-contribution-workflow-${{ github.event_name }}-${{ github.event.issue.user.login || github.event.pull_request.user.login || github.actor || 'manual' }}
+  cancel-in-progress: false
+
+env:
+  BURST_WINDOW_HOURS: 2
+  STRONG_WINDOW_HOURS: 24
+  BURST_THRESHOLD: 2
+  STRONG_THRESHOLD: 6
+  MIN_BODY_CHARS: 120
+
+jobs:
+  guide_and_enforce:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Guard the queue and enforce contribution quality
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const env = process.env;
+
+            const BURST_WINDOW_HOURS = Number(env.BURST_WINDOW_HOURS || 6);
+            const STRONG_WINDOW_HOURS = Number(env.STRONG_WINDOW_HOURS || 24);
+            const BURST_THRESHOLD = Number(env.BURST_THRESHOLD || 2);
+            const STRONG_THRESHOLD = Number(env.STRONG_THRESHOLD || 4);
+            const MIN_BODY_CHARS = Number(env.MIN_BODY_CHARS || 120);
+
+            const skipUsers = new Set([
+              'github-actions[bot]',
+              'dependabot[bot]',
+              'renovate[bot]'
+            ]);
+
+            const contributorGuide = (actor, details) => `
+            Hi @${actor} 👋
+
+                 To maintain signal quality and review efficiency, this repository enforces a contribution rate limit.
+
+                 maximum of **6 issues within a 24-hour window** is allowed per contributor. If you have multiple related changes, please consolidate them into a single, well-structured pull request.
+                 
+                 This pull request has been automatically closed because the current activity exceeds the allowed threshold or matches burst patterns.
+                 
+                 Recent activity summary:
+                 
+                - ${burstStats.issues + burstStats.prs} contributions in the last ${BURST_WINDOW_HOURS} hours
+                - ${strongStats.issues + strongStats.prs} contributions in the last ${STRONG_WINDOW_HOURS} hours
+                
+                You may reopen with a focused and complete submission.
+                
+                Thank you for your understanding and for contributing thoughtfully.
+            `;
+
+            const isManualRun = context.eventName === 'workflow_dispatch';
+            const manualMode = (context.payload.inputs?.mode || 'enforce').toLowerCase();
+
+            let issue = context.payload.issue ?? null;
+            let pr = context.payload.pull_request ?? null;
+
+            if (isManualRun) {
+              const targetType = context.payload.inputs?.target_type;
+              const rawNumber = context.payload.inputs?.number;
+              const number = Number(rawNumber);
+
+              if (!Number.isInteger(number) || number <= 0) {
+                core.setFailed('workflow_dispatch requires a valid issue or pull request number.');
+                return;
+              }
+
+              if (targetType === 'issue') {
+                issue = (await github.rest.issues.get({ owner, repo, issue_number: number })).data;
+              } else if (targetType === 'pull_request') {
+                pr = (await github.rest.pulls.get({ owner, repo, pull_number: number })).data;
+              } else {
+                core.setFailed(`Unsupported target_type: ${targetType}`);
+                return;
+              }
+            }
+
+            if (!issue && !pr) {
+              core.info('No issue or pull request context found. Nothing to do.');
+              return;
+            }
+
+            const actor = (issue?.user?.login || pr?.user?.login || context.actor || '').trim();
+            if (!actor || skipUsers.has(actor)) {
+              core.info(`Skipping actor ${actor || '(empty)'}.`);
+              return;
+            }
+
+            const itemNumber = issue?.number || pr?.number;
+            const itemType = issue ? 'issue' : 'pull_request';
+            const itemTitle = (issue?.title || pr?.title || '').trim();
+            const itemBody = (issue?.body || pr?.body || '').trim();
+
+            async function ensureLabel(name, color, description) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({ owner, repo, name, color, description })
+                  .catch(e => {
+                    if (e.status !== 422) throw e;
+                  });
+              }
+            }
+
+            async function addComment(number, body) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
+            }
+
+            async function addLabels(number, labels) {
+              const unique = [...new Set((labels || []).filter(Boolean))];
+              if (!unique.length) return;
+              await github.rest.issues.addLabels({ owner, repo, issue_number: number, labels: unique })
+                .catch(async (error) => {
+                  if (error.status === 404 || error.status === 422) return;
+                  throw error;
+                });
+            }
+
+            async function closeIssue(number) {
+              await github.rest.issues.update({ owner, repo, issue_number: number, state: 'closed' });
+            }
+
+            async function closePullRequest(number) {
+              await github.rest.pulls.update({ owner, repo, pull_number: number, state: 'closed' });
+            }
+
+            function normalizeTitle(title) {
+              return title
+                .toLowerCase()
+                .replace(/`[^`]*`/g, ' ')
+                .replace(/[^a-z0-9]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            }
+
+            function tokenize(title) {
+              const stop = new Set([
+                'a','an','the','and','or','to','of','for','in','on','with','without','by','from','at','as',
+                'issue','bug','fix','feature','enhancement','add','implement','support','update','improve'
+              ]);
+              return normalizeTitle(title)
+                .split(' ')
+                .filter(token => token.length > 2 && !stop.has(token));
+            }
+
+            function tokenOverlapScore(a, b) {
+              const A = new Set(tokenize(a));
+              const B = new Set(tokenize(b));
+              if (!A.size || !B.size) return 0;
+              let common = 0;
+              for (const token of A) if (B.has(token)) common++;
+              return common / Math.max(A.size, B.size);
+            }
+
+            function looksLowQualityIssue(title, body) {
+              const bodyText = body || '';
+              const lower = bodyText.toLowerCase();
+              const hasRepro = /steps to reproduce|reproduction|reproduc/i.test(lower);
+              const hasExpected = /expected/i.test(lower);
+              const hasActual = /actual/i.test(lower);
+              const hasLogs = /log|traceback|stack trace|error/i.test(lower);
+              const hasCodeFence = /```/.test(bodyText);
+              const bodyShort = bodyText.trim().length < MIN_BODY_CHARS;
+              const vagueTitle = tokenize(title).length <= 2;
+              return (bodyShort && !(hasRepro || hasExpected || hasActual || hasLogs || hasCodeFence)) || vagueTitle;
+            }
+
+            function looksLowQualityPR(title, body) {
+              const bodyText = body || '';
+              const lower = bodyText.toLowerCase();
+              const hasSummary = /summary|what|why|changes/i.test(lower);
+              const hasLinkedIssue = /(?:fix(?:es|ed)?|close(?:s|d)?|resolve(?:s|d)?)\s+#\d+/i.test(bodyText);
+              const bodyShort = bodyText.trim().length < MIN_BODY_CHARS;
+              return bodyShort && !hasSummary && !hasLinkedIssue && tokenize(title).length <= 3;
+            }
+
+            async function recentContributions(author, hours) {
+              const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+              const cutoffDate = cutoff.toISOString().slice(0, 10);
+              const q = `repo:${owner}/${repo} author:${author} created:>=${cutoffDate}`;
+              const result = await github.rest.search.issuesAndPullRequests({ q, per_page: 100 });
+              return (result.data.items || []).filter(item => new Date(item.created_at) >= cutoff);
+            }
+
+            async function parseLinkedIssues(body) {
+              if (!body) return [];
+              const ids = new Set();
+              const pattern = /(?:fix(?:es|ed)?|close(?:s|d)?|resolve(?:s|d)?)\s+(?:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)?#(\d+)/gi;
+              let match;
+              while ((match = pattern.exec(body)) !== null) {
+                const n = Number(match[1]);
+                if (Number.isInteger(n) && n > 0) ids.add(n);
+              }
+              return [...ids];
+            }
+
+            function contributionStats(items) {
+              const stats = { issues: 0, prs: 0 };
+              for (const item of items) {
+                if (item.pull_request) stats.prs++;
+                else stats.issues++;
+              }
+              return stats;
+            }
+
+            await ensureLabel('status:needs-review', 'd4c5f9', 'Waiting for maintainer review');
+            await ensureLabel('status:in-progress', 'b6e3ff', 'Work is currently in progress');
+            await ensureLabel('status:needs-info', 'ffd6a5', 'Needs clarification or more details');
+            await ensureLabel('status:blocked', 'ffb3c7', 'Blocked pending response');
+            await ensureLabel('status:duplicate', 'ffadad', 'Duplicate issue or PR');
+            await ensureLabel('status:possible-spam', 'd73a4a', 'Suspicious burst or low-signal contribution');
+            await ensureLabel('status:rate-limited', 'b60205', 'Contributor posted too many items too quickly');
+            await ensureLabel('status:ready-to-close', 'b7eb8f', 'Ready to be closed after merge');
+
+            const recentBurstItems = await recentContributions(actor, BURST_WINDOW_HOURS);
+            const recentStrongItems = await recentContributions(actor, STRONG_WINDOW_HOURS);
+
+            const burstStats = contributionStats(recentBurstItems);
+            const strongStats = contributionStats(recentStrongItems);
+
+            const sameTitleMatches = recentBurstItems.filter(item => {
+              if ((item.number || itemNumber) === itemNumber) return false;
+              return tokenOverlapScore(item.title || '', itemTitle) >= 0.6;
+            });
+
+            const lowQuality = itemType === 'issue'
+              ? looksLowQualityIssue(itemTitle, itemBody)
+              : looksLowQualityPR(itemTitle, itemBody);
+
+            const burstTooFast = (burstStats.issues + burstStats.prs) >= BURST_THRESHOLD;
+            const strongBurst = (strongStats.issues + strongStats.prs) >= STRONG_THRESHOLD;
+            const duplicateLike = sameTitleMatches.length > 0;
+            const linkedIssues = itemType === 'pull_request' ? await parseLinkedIssues(itemBody) : [];
+
+            const actionNotes = [];
+            if (burstTooFast) actionNotes.push(`burst activity: ${burstStats.issues + burstStats.prs} contributions in the last ${BURST_WINDOW_HOURS}h`);
+            if (strongBurst) actionNotes.push(`heavy activity: ${strongStats.issues + strongStats.prs} contributions in the last ${STRONG_WINDOW_HOURS}h`);
+            if (duplicateLike) actionNotes.push(`similar title found in a recent contribution`);
+            if (lowQuality) actionNotes.push(`low-signal report body`);
+            if (itemType === 'pull_request' && !linkedIssues.length) actionNotes.push(`no linked issue reference`);
+
+            const shouldWarn = burstTooFast || duplicateLike || lowQuality;
+            const shouldEnforceClose =
+              manualMode === 'enforce' &&
+              (
+                (itemType === 'issue' && (burstTooFast || strongBurst || duplicateLike || lowQuality)) ||
+                (itemType === 'pull_request' && (burstTooFast || strongBurst || duplicateLike || (lowQuality && !linkedIssues.length)))
+              );
+
+            const reason = actionNotes.length
+              ? `Automated review summary: ${actionNotes.join('; ')}.`
+              : 'Automated review summary: no immediate policy violation detected.';
+
+            if (itemType === 'issue') {
+              if (shouldWarn) {
+                await addComment(itemNumber, contributorGuide(actor, `
+                ${reason}
+
+                To keep triage fair and accurate, this issue is being reviewed as a burst or duplicate-risk submission.
+                `));
+                await addLabels(itemNumber, [
+                  'status:needs-review',
+                  burstTooFast ? 'status:rate-limited' : null,
+                  duplicateLike ? 'status:duplicate' : null,
+                  lowQuality ? 'status:needs-info' : null,
+                  'status:possible-spam'
+                ]);
+              }
+
+              if (shouldEnforceClose) {
+                await addComment(itemNumber, `
+                Hi @${actor} 👋
+
+                 To maintain signal quality and review efficiency, this repository enforces a contribution rate limit.
+
+                 maximum of **6 issues within a 24-hour window** is allowed per contributor. If you have multiple related changes, please consolidate them into a single, well-structured pull request.
+                 
+                 This pull request has been automatically closed because the current activity exceeds the allowed threshold or matches burst patterns.
+                 
+                 Recent activity summary:
+                 
+                - ${burstStats.issues + burstStats.prs} contributions in the last ${BURST_WINDOW_HOURS} hours
+                - ${strongStats.issues + strongStats.prs} contributions in the last ${STRONG_WINDOW_HOURS} hours
+                
+                You may reopen with a focused and complete submission.
+                
+                Thank you for your understanding and for contributing thoughtfully.
+                
+                `);
+                await closeIssue(itemNumber);
+              }
+            }
+
+            if (itemType === 'pull_request') {
+              const linkedIssueText = linkedIssues.length ? `Linked issue(s): ${linkedIssues.map(n => `#${n}`).join(', ')}.` : 'No linked issue was detected in the PR body.';
+
+              if (shouldWarn) {
+                await addComment(itemNumber, contributorGuide(actor, `
+                ${reason}
+
+                ${linkedIssueText}
+                Please keep the pull request tightly scoped and linked to a single issue when possible.
+                `));
+                await addLabels(itemNumber, [
+                  'status:needs-review',
+                  burstTooFast ? 'status:rate-limited' : null,
+                  duplicateLike ? 'status:duplicate' : null,
+                  lowQuality ? 'status:needs-info' : null,
+                  'status:possible-spam'
+                ]);
+              }
+
+              if (shouldEnforceClose) {
+                await addComment(itemNumber, `
+                Hi @${actor} 👋
+
+                This pull request is being closed automatically because it matches the burst-activity policy:
+                - ${burstStats.issues + burstStats.prs} contributions in the last ${BURST_WINDOW_HOURS} hours
+                - ${strongStats.issues + strongStats.prs} contributions in the last ${STRONG_WINDOW_HOURS} hours
+                - ${linkedIssues.length ? 'a linked issue was detected, but the contribution pattern is still too dense.' : 'no linked issue was detected.'}
+
+                Please resubmit with one focused change set and one linked issue.
+                `);
+                await closePullRequest(itemNumber);
+              }
+            }
+
+            if (context.eventName === 'pull_request_target' && context.payload.action === 'closed' && pr?.merged) {
+              const mergedIssues = await parseLinkedIssues(pr.body || '');
+              for (const number of mergedIssues) {
+                await addComment(number, `
+                Hi @${actor} 👋
+
+                This issue has been resolved by a merged pull request.
+                Thank you for the disciplined contribution.
+
+                Closing this issue now.
+                `);
+                await closeIssue(number).catch(async (error) => {
+                  if (error.status === 404 || error.status === 410) return;
+                  throw error;
+                });
+              }
+            }
+
+            if (manualMode === 'audit' && shouldWarn) {
+              core.info('Audit mode enabled: warnings were posted, but no automatic close was performed.');
+            }
+          env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            

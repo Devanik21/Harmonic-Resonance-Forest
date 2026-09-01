@@ -1,5 +1,5 @@
 # Devanik
-
+  
 **ECE 2026 | AI Researcher | Creator of Harmonic Resonance Fields**
 
 [![Zenodo DOI](https://zenodo.org/records/18173940)](https://zenodo.org/records/18173940)
@@ -9,7 +9,7 @@
 
 ---
 
-⚠️ Project Status: This repository contains published research (DOI: 10.5281/zenodo.18173940). All contributions must pass rigorous testing to ensure the 98.84% accuracy benchmark is maintained. Please read CONTRIBUTING.md before opening an issue.
+Project Status: This repository contains published research (DOI: 10.5281/zenodo.18173940). All contributions must pass rigorous testing to ensure the 98.84% accuracy benchmark is maintained. Please read CONTRIBUTING.md before opening an issue.
 
 
 ---
@@ -23,9 +23,9 @@ We welcome meaningful contributions across:
 - Research validation
 - Code improvements
 
-> ⚠️ Note: This is a research-grade repository. All PRs must maintain scientific rigor and performance benchmarks.
+>  Note: This is a research-grade repository. All PRs must maintain scientific rigor and performance benchmarks.
 > 
-> ⚠️ gssoc-2026 branch is experimental and may contain unstable or incomplete implementations.
+>  gssoc-2026 branch is experimental and may contain unstable or incomplete implementations.
 > 
 > For stable benchmarks, always use main branch.
 
